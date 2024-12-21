@@ -68,7 +68,7 @@ def get_game_details(app_id, regions):
                 "release_date": game_data.get("release_date", {}).get("date", "N/A"),
             }
         else:
-            return {"error": "---------------------------Game details not available-------------------------------------"}
+            return {"error": f"-------------{app_id}--------------Game details not available-------------------------------------"}
     except Exception as e:
         return {"error": f"Error fetching game details: {e}"}
     for region in regions:
@@ -97,7 +97,7 @@ if __name__ == "__main__":
                 print(game_details["error"])
             else:
                 # print(game_details)
-                print(f"Title: {game_details['title']}")
+                print(f"Title: {game_details['title']}-------------id:{appid_list[i]['appid']}---")
                 print(f"Short Description: {game_details['short_description']}")
                 print(f"Publisher: {game_details['publisher']}")
                 print(f"Platforms: {game_details['platforms']}")

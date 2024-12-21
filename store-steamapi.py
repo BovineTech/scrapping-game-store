@@ -26,8 +26,6 @@ regions = [
         "ae",  # United Arab Emirates
     ]
 
-import requests
-
 def get_app_list():
     api_url = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
     

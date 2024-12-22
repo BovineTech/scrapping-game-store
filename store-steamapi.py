@@ -1,4 +1,10 @@
 import requests
+from pymongo import MongoClient
+
+client = MongoClient("mongodb://localhost:27017/")
+db = client["steam_games_db"]
+collection = db["games_info"]
+STEAM_API_URL = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
 
 regions = [
         "us",  # United States
@@ -26,11 +32,9 @@ regions = [
         "ae",  # United Arab Emirates
     ]
 
-def get_app_list():
-    api_url = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
-    
+def get_app_list():    
     try:
-        response = requests.get(api_url)
+        response = requests.get(STEAM_API_URL)
         response.raise_for_status()  # Raise an exception for HTTP errors
         
         data = response.json()
@@ -44,7 +48,7 @@ def get_app_list():
         print(f"An error occurred: {e}")
         return []
 
-def get_game_details(app_id, regions):
+def get_game_details(app_id):
     base_url = "https://store.steampowered.com/api/appdetails"
     game_details = {}
     prices = {}
@@ -88,24 +92,19 @@ def get_game_details(app_id, regions):
     game_details["prices"] = prices
     return game_details
 
+def save_to_mongo(game_details):
+    try:
+        collection.insert_one(game_details)
+        print(f"----------------'{game_details['appid']}'----------Game '{game_details['title']}' saved to MongoDB!")
+    except Exception as e:
+        print(f"Error saving to MongoDB: {e}")
+
 if __name__ == "__main__":
     appid_list = get_app_list()
     if appid_list:
         for i in range(len(appid_list)):
-            game_details = get_game_details(appid_list[i]['appid'], regions)
+            game_details = get_game_details(appid_list[i]['appid'])
             if "error" in game_details:
                 print(game_details["error"])
             else:
-                # print(game_details)
-                print(f"Title: {game_details['title']}-------------id:{appid_list[i]['appid']}---")
-                print(f"Short Description: {game_details['short_description']}")
-                print(f"Publisher: {game_details['publisher']}")
-                print(f"Platforms: {game_details['platforms']}")
-                print(f"Release Date: {game_details['release_date']}")
-                print(f"Rating: {game_details['rating']}")
-                print(f"Header Image: {game_details['header_image']}")
-                print(f"Screenshots: {', '.join(game_details['screenshots'])}\n")
-                # Display regional prices
-                print("Prices in different regions:")
-                for region, price in game_details["prices"].items():
-                    print(f"  {region.upper()}: {price}")
+                save_to_mongo(game_details)

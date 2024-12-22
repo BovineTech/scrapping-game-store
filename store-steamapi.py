@@ -62,6 +62,7 @@ def get_game_details(app_id):
             game_data = data[str(app_id)]["data"]
             game_details = {
                 "title": game_data.get("name", "N/A"),
+                "categories": [category["description"] for category in game_data.get("categories", [])],
                 "short_description": game_data.get("short_description", "N/A"),
                 "full_description": game_data.get("detailed_description", "N/A"),
                 "screenshots": [s["path_full"] for s in game_data.get("screenshots", [])],

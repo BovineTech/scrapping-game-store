@@ -2,4 +2,4 @@ beautifulsoup4
 requests
 pymongo
 selenium
-ChromeDriver
+chromedriver

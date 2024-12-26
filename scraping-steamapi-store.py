@@ -1,9 +1,9 @@
 import requests
 from pymongo import MongoClient
 
-client = MongoClient("mongodb://localhost:27017/")
-db = client["steam_games_db"]
-collection = db["games_info"]
+client = MongoClient("mongodb+srv://thierrycaillibot5:LHoQJT9mC8i4KzvP@gamecluster.vqcxn.mongodb.net/")
+db = client["test"]
+collection = db["games"]
 STEAM_API_URL = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
 
 regions = [

@@ -14,15 +14,37 @@ from dotenv import load_dotenv
 import os
 
 # Load environment variables
-# load_dotenv()
-# MONGO_URI = os.getenv("MONGO_URI")
-# DATABASE_NAME = "xbox_game_data"
-# COLLECTION_NAME = "games"
+load_dotenv()
+MONGO_URI = os.getenv("MONGO_URI")
+DATABASE_NAME = "xbox_game_data"
+COLLECTION_NAME = "games"
 
 # MongoDB setup
-# client = pymongo.MongoClient(MONGO_URI)
-# db = client[DATABASE_NAME]
-# collection = db[COLLECTION_NAME]
+client = pymongo.MongoClient(MONGO_URI)
+db = client[DATABASE_NAME]
+collection = db[COLLECTION_NAME]
+
+regions = [
+        # "en-us",  # United States as default
+        "en-gb",  # United Kingdom      
+        "en-eu",  # European Union      
+        "en-in",  # India               
+        "pt-br",  # Brazil              
+        "en-au",  # Australia           
+        "en-ca",  # Canada
+        "ru-ru",  # Russia              
+        "zh-cn",  # China               
+        "es-mx",  # Mexico              
+        "en-za",  # South Africa         
+        "es-ar",  # Argentina
+        "tr-tr",  # Turkey               
+        "ar-sa",  # Saudi Arabia         
+        "ar-ae",  # United Arab Emirates 
+        "en-hu",  # Hungary              
+        "es-co",  # Colombia             
+        "en-pl",  # Poland              
+        "en-no",  # Norway              
+    ]
 
 # Selenium setup
 options = Options()
@@ -48,69 +70,85 @@ while True:
     load_more_button = browser.find_element(By.XPATH, '//button[contains(@aria-label, "Load more")]')
     load_more_button.click()
     
-
 # Parse the loaded page
 soup = BeautifulSoup(browser.page_source, 'html.parser')
 games = soup.find_all('div', class_='ProductCard-module__cardWrapper___6Ls86 shadow') # Update with the correct class
 
 data = []
-count = 0
 for game in games:
-    count += 1
-print("Total game count is ", count, ".")
+    try:
+        details_link = game.find('a', href=True)['href']
+        browser.get(details_link)
+        # browser.get("https://www.xbox.com/en-US/games/store/left-4-dead-2/BWVZHJN0G3C3/0001")
+        details_soup = BeautifulSoup(browser.page_source, 'html.parser')
 
-# for game in games:
-#     try:
-#         # Open game details page
-#         details_link = game.find('a', href=True)['href']
-#         browser.get(details_link)
-#         details_soup = BeautifulSoup(browser.page_source, 'html.parser')
+        tmp = details_soup.find('h1', class_="typography-module__xdsH1___7oFBA ProductDetailsHeader-module__productTitle___Hce0B")
+        title = tmp.text.strip() if tmp else "No Title"
 
-#         title = details_soup.find('h1', class_="typography-module__xdsH1___7oFBA ProductDetailsHeader-module__productTitle___Hce0B").text.strip()
+        tmp = details_soup.find('span', class_="ProductInfoLine-module__starRatingsDisplayChange___mbgn5 ProductInfoLine-module__textInfo___jOZ96")
+        categories = tmp.text.split("•") if tmp else []
+        categories.pop(0)
+        rating = categories.pop() if categories[-1].endswith('K') else "Average Rating Not Yet Available"
 
-#         tmp = game.find_all('ul', class_="FeaturesList-module__wrapper___KIw42 commonStyles-module__featureListStyle___8SVho")
-#         print("-------------------------------------------\n",tmp)
-#         categories = [tag.text for tag in tmp.find_all('li')] if tmp else "N/A"
+        tmp = details_soup.find('meta', {'name':'description'})['content']
+        short_description = tmp if tmp else "No Short Description"
 
-#         print("-------------------------------------------\n", categories)
-#         break
-#         # description_short = game.find('p', class_='short-description').text.strip() if game.find('p', class_='short-description') else ""
+        tmp = details_soup.find('p', class_="Description-module__description___ylcn4 typography-module__xdsBody2___RNdGY ExpandableText-module__container___Uc17O")
+        full_description = tmp.text.strip() if tmp else "No Full Description"
 
-#         # description_full = details_soup.find('div', class_='description').text.strip() if details_soup.find('div', class_='description') else ""
-#         # screenshots = [img['src'] for img in details_soup.find_all('img', class_='screenshot')]
-#         # game_cover = details_soup.find('img', class_='cover')['src'] if details_soup.find('img', class_='cover') else ""
+        tmp = details_soup.find('section', {'aria-label' : 'Gallery'})
+        screenshots = [img['src'] for img in tmp.find_all('img')] if tmp else "No Screenshot"
+
+        tmp = details_soup.find('img', class_='WrappedResponsiveImage-module__image___QvkuN ProductDetailsHeader-module__productImage___QK3JA')
+        header_image = tmp['src'] if tmp else "No Game Header Imgae"
         
-#         # rating = details_soup.find('span', class_='rating').text.strip() if details_soup.find('span', class_='rating') else ""
-#         # publisher = details_soup.find('span', class_='publisher').text.strip() if details_soup.find('span', class_='publisher') else ""
-#         # platforms = [plat.text.strip() for plat in details_soup.find_all('span', class_='platform')]
-#         # release_date = details_soup.find('span', class_='release-date').text.strip() if details_soup.find('span', class_='release-date') else ""
+        tmp = details_soup.find('h3', class_='typography-module__xdsBody1___+TQLW', string='Published by')
+        tmp = tmp.find_parent('div', class_='ModuleColumn-module__col___StJzB') if tmp else ""
+        tmp = tmp.find('div', class_="typography-module__xdsBody2___RNdGY") if tmp else ""
+        publisher = tmp.text.strip() if tmp else "No Publisher"
 
-#         # prices = {
-#         #     currency.text.strip(): price.text.strip()
-#         #     for currency, price in zip(details_soup.find_all('span', class_='currency'), details_soup.find_all('span', class_='price'))
-#         # }
+        tmp = details_soup.find('ul', class_="FeaturesList-module__wrapper___KIw42 commonStyles-module__featureListStyle___8SVho")
+        tmp = tmp.find_all('li') if tmp else ""
+        platforms = [item.text.strip() for item in tmp] if tmp else "No Platforms"
 
-#         # game_data = {
-#         #     "title": title,
-#         #     "categories": categories,
-#         #     "description_short": description_short,
-#         #     "description_full": description_full,
-#         #     "screenshots": screenshots,
-#         #     "game_cover": game_cover,
-#         #     "rating": rating,
-#         #     "publisher": publisher,
-#         #     "platforms": platforms,
-#         #     "release_date": release_date,
-#         #     "prices": prices
-#         # }
+        tmp = details_soup.find('h3', class_='typography-module__xdsBody1___+TQLW', string='Release date')
+        tmp = tmp.find_parent('div', class_='ModuleColumn-module__col___StJzB') if tmp else ""
+        tmp = tmp.find('div', class_="typography-module__xdsBody2___RNdGY") if tmp else ""
+        release_date = tmp.text.strip() if tmp else "No Release Data"
 
-#         # # Insert into MongoDB
-#         # collection.insert_one(game_data)
-#         # data.append(game_data)
-#     except Exception as e:
-#         print(f"Error processing game: {e}")
+        prices = {}
+        tmp = details_soup.find('span', class_="Price-module__boldText___1i2Li Price-module__moreText___sNMVr AcquisitionButtons-module__listedPrice___PS6Zm")
+        if tmp:        
+            prices["us"] = tmp.text.strip()
+            for region in regions:
+                browser.get(details_link.replace("en-US", region))
+                price_soup = BeautifulSoup(browser.page_source, 'html.parser')
+                tmp = price_soup.find('span', class_="Price-module__boldText___1i2Li Price-module__moreText___sNMVr AcquisitionButtons-module__listedPrice___PS6Zm")
+                prices[region.split('-')[1]] = tmp.text.strip() if tmp else "BUNDLE NOT AVAILABLE"
+        else :
+            prices["us"] = "NOT AVAILABLE SEPARATELY"
+            for region in regions:
+                prices[region.split('-')[1]] = "NOT AVAILABLE SEPARATELY"
+        print(prices)
+        game_data = {
+            "title": title,                          
+            "categories": categories,
+            "short_description": short_description,
+            "full_description": full_description,
+            "screenshots": screenshots,
+            "header_image": header_image,
+            "rating": rating,
+            "publisher": publisher,
+            "platforms": platforms,
+            "release_date": release_date,
+            "prices": prices
+        }
+        # Insert into MongoDB
+        collection.insert_one(game_data)
+        data.append(game_data)
+    except Exception as e:
+        print(f"Error processing game: {e}")
+        break
 
 browser.quit()
-
-# print(f"Scraped {len(data)} games and saved to MongoDB.")
 

@@ -2,9 +2,7 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
@@ -48,6 +46,8 @@ options = Options()
 options.add_argument("--headless")
 options.add_argument("--disable-gpu")
 options.add_argument("--no-sandbox")
+options.add_argument("--enable-unsafe-swiftshader")
+options.add_argument("--disable-software-rasterizer") # Prevent fallback errors
 
 # Replace with the correct path
 service = Service('C:\\Users\\Administrator\\.wdm\drivers\\chromedriver\\win64\\131.0.6778.204\\chromedriver-win32\\chromedriver.exe')
@@ -56,6 +56,7 @@ browser = webdriver.Chrome(service=service, options=options)
 url = "https://www.xbox.com/en-US/games/browse"
 browser.get(url)
 
+count = 0
 while True:
     try:
         load_more_button = WebDriverWait(browser, 60).until(
@@ -66,6 +67,8 @@ while True:
         break
     load_more_button = browser.find_element(By.XPATH, '//button[contains(@aria-label, "Load more")]')
     load_more_button.click()
+    count += 1
+    print("-"*20, "Load more button", count, " times clikced","-"*20)
     
 # Parse the loaded page
 soup = BeautifulSoup(browser.page_source, 'html.parser')
@@ -82,9 +85,12 @@ for game in games:
 
         tmp = details_soup.find('span', class_="ProductInfoLine-module__starRatingsDisplayChange___mbgn5 ProductInfoLine-module__textInfo___jOZ96")
         categories = tmp.text.split("•") if tmp else []
-        categories.pop(0)
-        rating = categories.pop() if categories[-1].endswith('K') else "Average Rating Not Yet Available"
-
+        if categories:
+            categories.pop(0)
+            rating = categories.pop() if categories[-1].endswith('K') & categories else "Average Rating Not Yet Available"
+        else:
+            categories = "No Categories"
+            rating = "Average Rating Not Yet Available"
         tmp = details_soup.find('meta', {'name':'description'})['content']
         short_description = tmp if tmp else "No Short Description"
 
@@ -140,6 +146,7 @@ for game in games:
         }
         # Insert into MongoDB
         collection.insert_one(game_data)
+        print("-"*10, "saved : ", title, "-"*10)
     except Exception as e:
         print(f"Error processing game: {e}")
         break

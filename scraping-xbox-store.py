@@ -1,4 +1,3 @@
-import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -74,12 +73,10 @@ while True:
 soup = BeautifulSoup(browser.page_source, 'html.parser')
 games = soup.find_all('div', class_='ProductCard-module__cardWrapper___6Ls86 shadow') # Update with the correct class
 
-data = []
 for game in games:
     try:
         details_link = game.find('a', href=True)['href']
         browser.get(details_link)
-        # browser.get("https://www.xbox.com/en-US/games/store/left-4-dead-2/BWVZHJN0G3C3/0001")
         details_soup = BeautifulSoup(browser.page_source, 'html.parser')
 
         tmp = details_soup.find('h1', class_="typography-module__xdsH1___7oFBA ProductDetailsHeader-module__productTitle___Hce0B")
@@ -145,7 +142,6 @@ for game in games:
         }
         # Insert into MongoDB
         collection.insert_one(game_data)
-        data.append(game_data)
     except Exception as e:
         print(f"Error processing game: {e}")
         break

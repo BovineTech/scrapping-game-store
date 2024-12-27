@@ -12,16 +12,14 @@ import pymongo
 from dotenv import load_dotenv
 import os
 
-# Load environment variables
-load_dotenv()
-MONGO_URI = os.getenv("MONGO_URI")
-DATABASE_NAME = "xbox_game_data"
-COLLECTION_NAME = "games"
+#mongo db setup
+# load_dotenv()
+# MONGO_URI = os.getenv("MONGO_URI")
 
-# MongoDB setup
-client = pymongo.MongoClient(MONGO_URI)
-db = client[DATABASE_NAME]
-collection = db[COLLECTION_NAME]
+# client = pymongo.MongoClient(MONGO_URI)
+client = pymongo.MongoClient("mongodb+srv://thierrycaillibot5:LHoQJT9mC8i4KzvP@gamecluster.vqcxn.mongodb.net/")
+db = client["test"]
+collection = db["xbox_games"]
 
 regions = [
         # "en-us",  # United States as default

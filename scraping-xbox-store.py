@@ -45,12 +45,14 @@ regions = [
 options = Options()
 options.add_argument("--headless")
 options.add_argument("--disable-gpu")
-options.add_argument("--no-sandbox")
 options.add_argument("--enable-unsafe-swiftshader")
 options.add_argument("--disable-software-rasterizer") # Prevent fallback errors
+options.add_argument("--disable-dev-shm-usage")  # Use shared memory
+options.add_argument("--no-sandbox")            # Avoid sandboxing (useful in Docker environments)
+options.add_argument("--max-old-space-size=4096")  # Limit memory usage (4 GB)
 
 # Replace with the correct path
-service = Service('C:\\Users\\Administrator\\.wdm\drivers\\chromedriver\\win64\\131.0.6778.204\\chromedriver-win32\\chromedriver.exe')
+service = Service(r'C:\Users\Administrator\.wdm\drivers\chromedriver\win64\131.0.6778.204\chromedriver-win32\chromedriver.exe')
 browser = webdriver.Chrome(service=service, options=options)
 
 url = "https://www.xbox.com/en-US/games/browse"
@@ -87,7 +89,7 @@ for game in games:
         categories = tmp.text.split("•") if tmp else []
         if categories:
             categories.pop(0)
-            rating = categories.pop() if categories[-1].endswith('K') & categories else "Average Rating Not Yet Available"
+            rating = categories.pop() if categories[-1].endswith('K') else "Average Rating Not Yet Available"
         else:
             categories = "No Categories"
             rating = "Average Rating Not Yet Available"

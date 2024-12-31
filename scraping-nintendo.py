@@ -1,113 +1,163 @@
-import requests
+from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support import expected_conditions as EC
+import pymongo
+from dotenv import load_dotenv
+import os
+from time import sleep
 
-regions = [
-        "us",  # United States
-        "gb",  # United Kingdom
-        "eu",  # European Union
-        "jp",  # Japan
-        "in",  # India
-        "br",  # Brazil
-        "au",  # Australia
-        "ca",  # Canada
-        "ru",  # Russia
-        "cn",  # China
-        "kr",  # South Korea
-        "mx",  # Mexico
-        "za",  # South Africa
-        "ar",  # Argentina
-        "tr",  # Turkey
-        "id",  # Indonesia
-        "sg",  # Singapore
-        "ph",  # Philippines
-        "th",  # Thailand
-        "my",  # Malaysia
-        "nz",  # New Zealand
-        "sa",  # Saudi Arabia
-        "ae",  # United Arab Emirates
-    ]
 
-def get_app_list():
-    api_url = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
+# Load environment variables
+# load_dotenv()
+# MONGO_URI = os.getenv("MONGO_URI")
+# DATABASE_NAME = "xbox_game_data"
+# COLLECTION_NAME = "games"
+
+# MongoDB setup
+# client = pymongo.MongoClient(MONGO_URI)
+# db = client[DATABASE_NAME]
+# collection = db[COLLECTION_NAME]
+
+region_urls = [
+    "https://www.nintendo.com/en-gb/Search/Search-299117.html?f=147394-86", # United Kingdom
+    # "https://www.nintendo.com/de-de/Suche-/Suche-299117.html?f=147394-86", # Germany
+    # "https://www.nintendo.com/fr-fr/Rechercher/Rechercher-299117.html?f=147394-5-81" # France
+    # "https://www.nintendo.com/it-it/Cerca/Cerca-299117.html?f=147394-86" # Italy
+    # "https://www.nintendo.com/es-es/Buscar/Buscar-299117.html?f=147394-86" # Spain
+    # "https://www.nintendo.com/nl-nl/Zoeken/Zoeken-299117.html?f=147394-86" # Netherlands
+    # "https://www.nintendo.com/pt-pt/Pesquisar/Pesquisa-299117.html?f=147394-86" # Portugal
+    # "https://www.nintendo.com/de-ch/Suche-/Suche-299117.html?f=147394-86" # Switzerland
+    # "https://www.nintendo.com/de-at/Suche-/Suche-299117.html?f=147394-86" # Austria
+]
+# Selenium setup
+options = Options()
+options.add_argument("--headless")
+options.add_argument("--disable-gpu")
+options.add_argument("--no-sandbox")
+options.binary_location = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"  # Adjust path if needed
+# Replace with the correct path
+service = Service('C:\\Users\\Administrator\\.cache\\selenium\\chromedriver\\win64\\131.0.6778.204\\chromedriver.exe')
+browser = webdriver.Chrome(service=service, options=options)
+
+url = "https://www.nintendo.com/us/store/games/#show=1&p=1&sort=df"
+browser.get(url)
+
+# while True:
+#     try:
+#         load_more_button = WebDriverWait(browser, 60).until(
+#             EC.element_to_be_clickable((By.XPATH, '//button[contains(@aria-label, "Load more")]'))
+#         )
+#     except TimeoutException:
+#         print("Timeout: Load more button not found or not clickable.")
+#         break
+#     load_more_button = browser.find_element(By.XPATH, '//button[contains(@aria-label, "Load more")]')
+#     load_more_button.click()
     
-    try:
-        response = requests.get(api_url)
-        response.raise_for_status()  # Raise an exception for HTTP errors
-        
-        data = response.json()
-        
-        if "applist" in data and "apps" in data["applist"]:
-            return data["applist"]["apps"]
-        else:
-            print("No app data found in response.")
-            return []   
-    except requests.exceptions.RequestException as e:
-        print(f"An error occurred: {e}")
-        return []
 
-def get_game_details(app_id, regions):
-    base_url = "https://store.steampowered.com/api/appdetails"
-    game_details = {}
-    prices = {}
+    
+# Parse the loaded page
+soup = BeautifulSoup(browser.page_source, 'html.parser')
+section = soup.find('section', class_='sc-1dskkk7-2 frpTjE')
+games = section.find_all('div', class_='y83ib')
+games += section.find_all('div', class_='y83ib H5L8k')
 
+for game in games:
     try:
-        response = requests.get(base_url, params={"appids": app_id, "l": "en"})
-        response.raise_for_status()
-        data = response.json()
+        details_link = "https://www.nintendo.com" + game.find('a', href=True)['href']
+        browser.get(details_link)
+        details_soup = BeautifulSoup(browser.page_source, 'html.parser')
+
+        # game title
+        tmp = details_soup.find('h1', class_="s954l _3TUsN _39p7O")
+        title = tmp.text.strip() if tmp else "No Title"
+     
+        # cover image
+        tmp = title + " 1"
+        tmp = details_soup.find('img',{'alt':tmp})
+        header_image = tmp['src'] if tmp else "No Game Header Imgae"
         
-        if str(app_id) in data and data[str(app_id)]["success"]:
-            game_data = data[str(app_id)]["data"]
-            game_details = {
-                "title": game_data.get("name", "N/A"),
-                "short_description": game_data.get("short_description", "N/A"),
-                "full_description": game_data.get("detailed_description", "N/A"),
-                "screenshots": [s["path_full"] for s in game_data.get("screenshots", [])],
-                "header_image": game_data.get("header_image", "N/A"),
-                "rating": game_data.get("metacritic", {}).get("score", "N/A"),
-                "publisher": ", ".join(game_data.get("publishers", [])),
-                "platforms": ", ".join([k for k, v in game_data.get("platforms", {}).items() if v]),
-                "release_date": game_data.get("release_date", {}).get("date", "N/A"),
-            }
-        else:
-            return {"error": f"-------------{app_id}--------------Game details not available-------------------------------------"}
+        # Release data
+        section = details_soup.find('div', class_='sc-m2d4bo-0 dzfqOu')
+        
+        tmp = section.find('h3', text='Release date')
+        release_date = tmp.find_next('div').text.strip() if tmp else "No Release Date"
+        
+        # cateories
+        categories = [genre.text for genre in section.find_all('h3', text='Genre')[0].find_next('div').find_all('a')]
+        
+        # publisher
+        tmp = section.find('h3', text='Publisher')
+        publisher = tmp.find_next('div').find('a').text.strip() if tmp else "No Pulblisher"
+        
+        # Rating
+        tmp = section.find('h3', text='ESRB rating')
+        rating = tmp.find_next('div').find('a').text.strip() if tmp else "No Rating"
+        
+        # Short description
+        tmp = details_soup.find('meta', {'name':'description'})['content']
+        short_description = tmp if tmp else "No Short Description"
+                
+        # Full description
+        full_description = []
+        
+        # Platform
+        tmp= details_soup.find('div', class_='sc-1i9d4nw-14 gxzajP')
+        platforms = tmp.find('span').get_text() if tmp else "No platform"
+        
+       # Screenshort 
+        tmp = details_soup.find('div', {'class' : '-fzAB SUqIq'})
+        screenshots = [img['src'] for img in tmp.find_all('img')] if tmp else "No Screenshot"
+        
+        # USA
+        prices = {}    
+        tmp = details_soup.find('span', class_='W990N QS4uJ').text.strip()   
+        
+        if tmp:
+            prices["us"] = tmp.split(':')[-1].strip()
+            
+            tmp = details_link
+            browser.get(tmp.replace("/us/",'/pt-br/'))
+            price_soup = BeautifulSoup(browser.page_source, 'html.parser')
+            tmp = price_soup.find('span', class_='W990N QS4uJ')
+            tmp = tmp.text.strip().replace('\xa0',' ') if tmp else ""
+            prices['br'] = tmp.split(':')[-1].strip() if tmp else "No"
+                  
+            # for region_url in region_urls:
+            #     browser.get(region_url)
+            #     input_element = browser.find_element(By.CSS_SELECTOR, "div.queryBox input[type='search']")
+           
+        # print("------------------>", prices)
+             
+        # else:
+        #     prices["us"] = "NOT AVAILABLE SEPARATELY"
+        #     for region in regions:
+        #        prices[region.split('-')[1]] = "NOT AVAILABLE SEPARATELY"
+        # print(prices)
+        game_data = {
+            "title": title,                          
+            "categories": categories,
+            "short_description": short_description,
+            "full_description": full_description,
+            "screenshots": screenshots,
+            "header_image": header_image,
+            "rating": rating,
+            "publisher": publisher,
+            "platforms": platforms,
+            "release_date": release_date,
+            "prices": prices
+        }
+        # Insert into MongoDB
+        # collection.insert_one(game_data)
+       
     except Exception as e:
-        return {"error": f"Error fetching game details: {e}"}
-    for region in regions:
-        try:
-            response = requests.get(base_url, params={"appids": app_id, "cc": region, "l": "en"})
-            response.raise_for_status()
-            data = response.json()
+        print(f"Error processing game: {e}")
+        break
 
-            if str(app_id) in data and data[str(app_id)]["success"]:
-                price_info = data[str(app_id)]["data"].get("price_overview")
-                prices[region] = price_info["final_formatted"] if price_info else "Free or Not Available"
-            else:
-                prices[region] = "Not Available"
-        except Exception as e:
-            prices[region] = f"Error: {e}"
-
-    game_details["prices"] = prices
-    return game_details
-
-if __name__ == "__main__":
-    game_details = get_game_details(10,regions)
-    print(game_details)
-    # appid_list = get_app_list()
-    # if appid_list:
-    #     for i in range(len(appid_list)):
-    #         game_details = get_game_details(appid_list[i]['appid'], regions)
-    #         if "error" in game_details:
-    #             print(game_details["error"])
-    #         else:
-    #             # print(game_details)
-    #             print(f"Title: {game_details['title']}-------------id:{appid_list[i]['appid']}---")
-    #             print(f"Short Description: {game_details['short_description']}")
-    #             print(f"Publisher: {game_details['publisher']}")
-    #             print(f"Platforms: {game_details['platforms']}")
-    #             print(f"Release Date: {game_details['release_date']}")
-    #             print(f"Rating: {game_details['rating']}")
-    #             print(f"Header Image: {game_details['header_image']}")
-    #             print(f"Screenshots: {', '.join(game_details['screenshots'])}\n")
-    #             # Display regional prices
-    #             print("Prices in different regions:")
-    #             for region, price in game_details["prices"].items():
-    #                 print(f"  {region.upper()}: {price}")
+browser.quit()

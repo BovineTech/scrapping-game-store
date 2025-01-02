@@ -19,7 +19,8 @@ options.add_argument("--disable-software-rasterizer")
 
 browser = webdriver.Chrome(service=service, options=options)
 
-browser.get("https://www.nintendo.com/jp/software/switch/index.html?sftab=all")
+# browser.get("https://www.nintendo.com/jp/software/switch/index.html?sftab=all")   #Japan URL
+browser.get("https://www.nintendo.com/jp/software/switch/index.html?sftab=all")     #Poland
 
 try:
     locator = (By.CSS_SELECTOR, 'input[class="nc3-c-search__boxText nc3-js-megadrop__focusable nc3-js-searchBox__text"]')

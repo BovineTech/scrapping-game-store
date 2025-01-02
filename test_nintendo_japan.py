@@ -19,23 +19,27 @@ options.add_argument("--disable-software-rasterizer")
 
 browser = webdriver.Chrome(service=service, options=options)
 
-browser.get("https://www.nintendo.com/jp/software/switch/index.html?sftab=all")
+# browser.get("https://www.nintendo.com/jp/software/switch/index.html?sftab=all")   #Japan URL
+browser.get("https://www.nintendo.com/jp/software/switch/index.html?sftab=all")     #Poland
 
 try:
-    title = "Fitness Boxing 3 Your Personal"
-
-    search_input = browser.find_elements(By.CSS_SELECTOR, 'input[class="nc3-c-search__boxText nc3-js-megadrop__focusable nc3-js-searchBox__text"]')
-    search_input[-1].clear()
-    search_input[-1].send_keys(title)
-
-    # Wait for the results to appear
-    WebDriverWait(browser, 10).until(
-        EC.visibility_of_element_located((By.CSS_SELECTOR, 'li[class="soft-main-smallBanner__item soft-topBanner__item soft-topBanner__itemSmall"]'))
+    locator = (By.CSS_SELECTOR, 'input[class="nc3-c-search__boxText nc3-js-megadrop__focusable nc3-js-searchBox__text"]')
+    WebDriverWait(browser, 30).until(
+        EC.presence_of_all_elements_located(locator)  # Wait for all matching elements
     )
-    # Parse the page with BeautifulSoup
-    soup = BeautifulSoup(browser.page_source, 'html.parser')
+    search_input = browser.find_elements(*locator)[-1]
+    WebDriverWait(browser, 30).until(EC.element_to_be_clickable(search_input))
+    search_input.send_keys("Fitness Boxing 3 Your Personal")
     
-    # Extract the price information
+    # browser.save_screenshot("!debug_screenshot5.png")
+    
+    results = (By.CSS_SELECTOR, 'div[class="nc3-c-softCard__listItemPrice"]')
+    WebDriverWait(browser, 30).until(
+        EC.visibility_of_all_elements_located(results)
+    )
+    # browser.save_screenshot("!debug_screenshot6.png")
+
+    soup = BeautifulSoup(browser.page_source, 'html.parser')
     price = soup.find('div', class_='nc3-c-softCard__listItemPrice')
     if price:
         print("-" * 50, "\n", price.text.strip())
@@ -46,5 +50,4 @@ except Exception as e:
     print(f"An error occurred: {e}")
 
 finally:
-    # Close the WebDriver
     browser.quit()

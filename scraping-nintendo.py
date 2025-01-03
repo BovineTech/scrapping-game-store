@@ -60,7 +60,7 @@ while True:
     except TimeoutException:
         print("Timeout: Load more button not found or not clickable.")
         break
-    
+
 # Parse the loaded page
 soup = BeautifulSoup(browser.page_source, 'html.parser')
 section = soup.find('section', class_='sc-1dskkk7-2 frpTjE')
@@ -97,7 +97,7 @@ for game in games:
         # Rating
         tmp = section.find('h3', text='ESRB rating')
         rating = tmp.find_next('div').find('a').text.strip() if tmp else "No Rating"
-        
+
         # Short description
         tmp = details_soup.find('meta', {'name':'description'})['content']
         short_description = tmp if tmp else "No Short Description"
@@ -175,7 +175,6 @@ for game in games:
             prices['jp'] = price if price else "NOT AVAILABLE SEPARATELY"
         except Exception as e:
             print(f"An error occurred: {e}")
-        
         game_data = {
             "title": title,                          
             "categories": categories,
@@ -192,6 +191,7 @@ for game in games:
         # Insert into MongoDB
         collection.insert_one(game_data)
         print("-"*10, "saved : ", title, "-"*10)
+
     except Exception as e:
         print(f"Error processing game: {e}")
         break

@@ -6,7 +6,9 @@ from dotenv import load_dotenv
 import os
 
 #mongo database
-client = pymongo.MongoClient("mongodb+srv://thierrycaillibot5:LHoQJT9mC8i4KzvP@gamecluster.vqcxn.mongodb.net/")
+load_dotenv()
+MONGO_URI = os.getenv("MONGO_URI")
+client = pymongo.MongoClient(MONGO_URI)
 db = client["test"]
 collection = db["playstation_games"]
 
@@ -83,7 +85,7 @@ for i in range(gameCount):
     full_description = soup.find(attrs={"data-qa": "pdp#overview"}).text
     gameInfo["full description"] = full_description
     
-    # screenshorta
+    # screenshort
     screenshorts = []
     gameInfo["screenshorts"] = screenshorts
     

@@ -11,11 +11,10 @@ from dotenv import load_dotenv
 import os
 
 #mongo db setup
-# load_dotenv()
-# MONGO_URI = os.getenv("MONGO_URI")
+load_dotenv()
+MONGO_URI = os.getenv("MONGO_URI")
 
-# client = pymongo.MongoClient(MONGO_URI)
-client = pymongo.MongoClient("mongodb+srv://thierrycaillibot5:LHoQJT9mC8i4KzvP@gamecluster.vqcxn.mongodb.net/")
+client = pymongo.MongoClient(MONGO_URI)
 db = client["test"]
 collection = db["xbox_games"]
 

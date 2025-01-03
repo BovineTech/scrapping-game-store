@@ -152,4 +152,3 @@ for game in games:
         break
 
 browser.quit()
-

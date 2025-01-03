@@ -1,9 +1,16 @@
 from bs4 import BeautifulSoup
 import requests
 import re
+import pymongo
+from dotenv import load_dotenv
+import os
+
+#mongo database
+client = pymongo.MongoClient("mongodb+srv://thierrycaillibot5:LHoQJT9mC8i4KzvP@gamecluster.vqcxn.mongodb.net/")
+db = client["test"]
+collection = db["playstation_games"]
 
 totalLinks =[]
-gameInfos = [{}]
 
 regions = [
     # 'en-us',
@@ -39,7 +46,6 @@ regions = [
     'en-za'
 ]
 
-
 last_page_url = f"https://store.playstation.com/en-us/pages/browse/1"
 response = requests.get(last_page_url)
 soup = BeautifulSoup(response.content, "html.parser")
@@ -55,6 +61,7 @@ for i in range(page_num):
     all_links = [a['href'] for a in soup.find_all('a', href=True)]
     filtered_links = [link for link in all_links if re.match(r"/en-us/concept/\d+", link)]
     totalLinks += filtered_links
+    print("-"*30, i, "-"*30, "\n")
 
 gameCount  = len(totalLinks)
 
@@ -116,8 +123,8 @@ for i in range(gameCount):
         price[region.split('-')[1]] = region_price.text.strip() if region_price else "N/A"
         
     gameInfo["price"] = price
+
+    # Insert into MongoDB
+    collection.insert_one(gameInfo)
+    print("-"*10, "saved : ", title, "-"*10)
     
-    gameInfos.append(gameInfo)
-for i in range(len(gameInfos)):
-    for key, value in gameInfos[i].items():
-        print(key, ":", value)

@@ -16,22 +16,19 @@ import os
 load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 client = pymongo.MongoClient(MONGO_URI)
-
-# Load environment variables
-# client = pymongo.MongoClient("mongodb+srv://thierrycaillibot5:LHoQJT9mC8i4KzvP@gamecluster.vqcxn.mongodb.net/")
 db = client["test"]
 collection = db["nintendo_games"]
 
 region_urls = [
     "https://www.nintendo.com/en-gb/Search/Search-299117.html?f=147394-86", # United Kingdom
     "https://www.nintendo.com/de-de/Suche-/Suche-299117.html?f=147394-86", # Germany
-    "https://www.nintendo.com/fr-fr/Rechercher/Rechercher-299117.html?f=147394-5-81" # France
-    "https://www.nintendo.com/it-it/Cerca/Cerca-299117.html?f=147394-86" # Italy
-    "https://www.nintendo.com/es-es/Buscar/Buscar-299117.html?f=147394-86" # Spain
-    "https://www.nintendo.com/nl-nl/Zoeken/Zoeken-299117.html?f=147394-86" # Netherlands
-    "https://www.nintendo.com/pt-pt/Pesquisar/Pesquisa-299117.html?f=147394-86" # Portugal
-    "https://www.nintendo.com/de-ch/Suche-/Suche-299117.html?f=147394-86" # Switzerland
-    "https://www.nintendo.com/de-at/Suche-/Suche-299117.html?f=147394-86" # Austria
+    "https://www.nintendo.com/fr-fr/Rechercher/Rechercher-299117.html?f=147394-5-81", # France
+    "https://www.nintendo.com/it-it/Cerca/Cerca-299117.html?f=147394-86", # Italy
+    "https://www.nintendo.com/es-es/Buscar/Buscar-299117.html?f=147394-86", # Spain
+    "https://www.nintendo.com/nl-nl/Zoeken/Zoeken-299117.html?f=147394-86", # Netherlands
+    "https://www.nintendo.com/pt-pt/Pesquisar/Pesquisa-299117.html?f=147394-86", # Portugal
+    "https://www.nintendo.com/de-ch/Suche-/Suche-299117.html?f=147394-86", # Switzerland
+    "https://www.nintendo.com/de-at/Suche-/Suche-299117.html?f=147394-86", # Austria
 ]
 # Selenium setup
 options = Options()
@@ -47,7 +44,7 @@ url = "https://www.nintendo.com/us/store/games/#show=1&p=1&sort=df"
 
 browser.get(url)
 
-#load more
+# load more
 count = 0
 while True:
     try:
@@ -151,7 +148,7 @@ for game in games:
                 tmp = tmp.find('li', class_="searchresult_row page-list-group-item col-xs-12")
                 tmp = tmp.find('p', class_='price-small')
                 price = tmp.find_all('span')[-1]
-                prices[region_url.split('/')[3].split('-')[1]] = price if price else "NOT AVAILABLE SEPARATELY"
+                prices[region_url.split('/')[3].split('-')[1]] = price.text.strip() if price else "NOT AVAILABLE SEPARATELY"
             except Exception as e:
                 print(f"An error occurred: {e}")
         
@@ -172,7 +169,7 @@ for game in games:
             )
             soup = BeautifulSoup(browser.page_source, 'html.parser')
             price = soup.find('div', class_='nc3-c-softCard__listItemPrice')
-            prices['jp'] = price if price else "NOT AVAILABLE SEPARATELY"
+            prices['jp'] = price.text.strip() if price else "NOT AVAILABLE SEPARATELY"
         except Exception as e:
             print(f"An error occurred: {e}")
         

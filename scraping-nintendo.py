@@ -11,19 +11,16 @@ from selenium.common.exceptions import TimeoutException
 import pymongo
 from dotenv import load_dotenv
 import os
-from time import sleep
-
-
-# Load environment variables
-load_dotenv()
-MONGO_URI = os.getenv("MONGO_URI")
-DATABASE_NAME = "xbox_game_data"
-COLLECTION_NAME = "games"
 
 # MongoDB setup
+load_dotenv()
+MONGO_URI = os.getenv("MONGO_URI")
 client = pymongo.MongoClient(MONGO_URI)
-db = client[DATABASE_NAME]
-collection = db[COLLECTION_NAME]
+
+# Load environment variables
+# client = pymongo.MongoClient("mongodb+srv://thierrycaillibot5:LHoQJT9mC8i4KzvP@gamecluster.vqcxn.mongodb.net/")
+db = client["test"]
+collection = db["nintendo_games"]
 
 region_urls = [
     "https://www.nintendo.com/en-gb/Search/Search-299117.html?f=147394-86", # United Kingdom
@@ -41,32 +38,33 @@ options = Options()
 options.add_argument("--headless")
 options.add_argument("--disable-gpu")
 options.add_argument("--no-sandbox")
-options.binary_location = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"  # Adjust path if needed
+# options.binary_location = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"  # Adjust path if needed
 
-service = Service('C:\\Users\\Administrator\\.cache\\selenium\\chromedriver\\win64\\131.0.6778.204\\chromedriver.exe')
+service = Service('C:\\Users\\Administrator\\.wdm\drivers\\chromedriver\\win64\\131.0.6778.204\\chromedriver-win32\\chromedriver.exe')
 browser = webdriver.Chrome(service=service, options=options)
 
 url = "https://www.nintendo.com/us/store/games/#show=1&p=1&sort=df"
+
 browser.get(url)
 
+#load more
+count = 0
 while True:
     try:
         load_more_button = WebDriverWait(browser, 60).until(
-            EC.element_to_be_clickable((By.XPATH, '//button[contains(@aria-label, "Load more")]'))
+            EC.element_to_be_clickable((By.XPATH, "//button[span[text()='Load more results']]"))
         )
+        load_more_button.click()
+        count += 1
+        print("-"*20, "Load more button", count, " times clikced","-"*20)
     except TimeoutException:
         print("Timeout: Load more button not found or not clickable.")
         break
-    load_more_button = browser.find_element(By.XPATH, '//button[contains(@aria-label, "Load more")]')
-    load_more_button.click()
-    
 
-    
 # Parse the loaded page
 soup = BeautifulSoup(browser.page_source, 'html.parser')
 section = soup.find('section', class_='sc-1dskkk7-2 frpTjE')
 games = section.find_all('div', class_='y83ib')
-games += section.find_all('div', class_='y83ib H5L8k')
 
 for game in games:
     try:
@@ -99,7 +97,7 @@ for game in games:
         # Rating
         tmp = section.find('h3', text='ESRB rating')
         rating = tmp.find_next('div').find('a').text.strip() if tmp else "No Rating"
-        
+
         # Short description
         tmp = details_soup.find('meta', {'name':'description'})['content']
         short_description = tmp if tmp else "No Short Description"
@@ -111,91 +109,72 @@ for game in games:
         tmp= details_soup.find('div', class_='sc-1i9d4nw-14 gxzajP')
         platforms = tmp.find('span').get_text() if tmp else "No platform"
         
-       # Screenshort 
+        # Screenshort 
         tmp = details_soup.find('div', {'class' : '-fzAB SUqIq'})
         screenshots = [img['src'] for img in tmp.find_all('img')] if tmp else "No Screenshot"
         
+        # Prices in different regions
+        prices = {}
         # USA
-        prices = {}    
         tmp = details_soup.find('span', class_='W990N QS4uJ').text.strip()   
-        
-        if tmp:
-            prices["us"] = tmp.split(':')[-1].strip()
-            
+        prices["us"] = tmp.split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATELY"
+
         # Brazil
-            tmp = details_link
-            browser.get(tmp.replace("/us/",'/pt-br/'))
-            price_soup = BeautifulSoup(browser.page_source, 'html.parser')
-            tmp = price_soup.find('span', class_='W990N QS4uJ')
-            tmp = tmp.text.strip().replace('\xa0',' ') if tmp else ""
-            prices['br'] = tmp.split(':')[-1].strip() if tmp else "No"
-        
+        tmp = details_link
+        browser.get(tmp.replace("/us/",'/pt-br/'))
+        price_soup = BeautifulSoup(browser.page_source, 'html.parser')
+        tmp = price_soup.find('span', class_='W990N QS4uJ')
+        tmp = tmp.text.strip().replace('\xa0',' ') if tmp else ""
+        prices['br'] = tmp.split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATELY"
+
         # EUA
-            for region in region_urls:
-                browser.get(region)
-                try:
-                    locator = (By.CSS_SELECTOR, 'input[type="search"]')
-                    WebDriverWait(browser, 30).until(
-                        EC.presence_of_all_elements_located(locator)  # Wait for matching element
-                    )
-                    search_input = browser.find_elements(*locator)[-1]
-
-                    WebDriverWait(browser, 30).until(EC.element_to_be_clickable(search_input))
-                    search_input.send_keys("Fitness Boxing 3 Your Personal")
-                    search_input.send_keys(Keys.RETURN)
-
-                    locator = (By.CSS_SELECTOR, 'span[class=""]')
-                    WebDriverWait(browser, 30).until(
-                        EC.visibility_of_all_elements_located(locator)
-                    )        
-
-                    soup = BeautifulSoup(browser.page_source, 'html.parser')
-                    tmp = soup.find_all('ul', class_="results")[-1]
-                    tmp = tmp.find('li', class_="searchresult_row page-list-group-item col-xs-12")
-                    tmp = tmp.find('p', class_='price-small')
-                    price = tmp.find_all('span')[-1]
-
-                    if price:
-                        print("-" * 50, "\n", price.text.strip())
-                    else:
-                        print("Price not found")
-                except Exception as e:
-                    print(f"An error occurred: {e}")
-            
-            # Japan
-            browser.get("https://www.nintendo.com/jp/software/switch/index.html?sftab=all")
-
+        for region_url in region_urls:
+            browser.get(region_url)
             try:
-                locator = (By.CSS_SELECTOR, 'input[class="nc3-c-search__boxText nc3-js-megadrop__focusable nc3-js-searchBox__text"]')
+                locator = (By.CSS_SELECTOR, 'input[type="search"]')
                 WebDriverWait(browser, 30).until(
-                    EC.presence_of_all_elements_located(locator)  # Wait for all matching elements
+                    EC.presence_of_all_elements_located(locator)  # Wait for matching element
                 )
                 search_input = browser.find_elements(*locator)[-1]
+
                 WebDriverWait(browser, 30).until(EC.element_to_be_clickable(search_input))
                 search_input.send_keys("Fitness Boxing 3 Your Personal")
-                
-                # browser.save_screenshot("!debug_screenshot5.png")
-                
-                results = (By.CSS_SELECTOR, 'div[class="nc3-c-softCard__listItemPrice"]')
+                search_input.send_keys(Keys.RETURN)
+
+                locator = (By.CSS_SELECTOR, 'span[class=""]')
                 WebDriverWait(browser, 30).until(
-                    EC.visibility_of_all_elements_located(results)
-                )
-                # browser.save_screenshot("!debug_screenshot6.png")
+                    EC.visibility_of_all_elements_located(locator)
+                )        
 
                 soup = BeautifulSoup(browser.page_source, 'html.parser')
-                price = soup.find('div', class_='nc3-c-softCard__listItemPrice')
-                if price:
-                    print("-" * 50, "\n", price.text.strip())
-                else:
-                    print("Price not found")
-
+                tmp = soup.find_all('ul', class_="results")[-1]
+                tmp = tmp.find('li', class_="searchresult_row page-list-group-item col-xs-12")
+                tmp = tmp.find('p', class_='price-small')
+                price = tmp.find_all('span')[-1]
+                prices[region_url.split('/')[3].split('-')[1]] = price if price else "NOT AVAILABLE SEPARATELY"
             except Exception as e:
                 print(f"An error occurred: {e}")
+        
+        # Japan
+        browser.get("https://www.nintendo.com/jp/software/switch/index.html?sftab=all")
+        try:
+            locator = (By.CSS_SELECTOR, 'input[class="nc3-c-search__boxText nc3-js-megadrop__focusable nc3-js-searchBox__text"]')
+            WebDriverWait(browser, 30).until(
+                EC.presence_of_all_elements_located(locator)  # Wait for all matching elements
+            )
+            search_input = browser.find_elements(*locator)[-1]
+            WebDriverWait(browser, 30).until(EC.element_to_be_clickable(search_input))
+            search_input.send_keys("Fitness Boxing 3 Your Personal")
             
-        else:
-            prices["us"] = "NOT AVAILABLE SEPARATELY"
-                 
-
+            results = (By.CSS_SELECTOR, 'div[class="nc3-c-softCard__listItemPrice"]')
+            WebDriverWait(browser, 30).until(
+                EC.visibility_of_all_elements_located(results)
+            )
+            soup = BeautifulSoup(browser.page_source, 'html.parser')
+            price = soup.find('div', class_='nc3-c-softCard__listItemPrice')
+            prices['jp'] = price if price else "NOT AVAILABLE SEPARATELY"
+        except Exception as e:
+            print(f"An error occurred: {e}")
         game_data = {
             "title": title,                          
             "categories": categories,
@@ -211,7 +190,8 @@ for game in games:
         }
         # Insert into MongoDB
         collection.insert_one(game_data)
-       
+        print("-"*10, "saved : ", title, "-"*10)
+
     except Exception as e:
         print(f"Error processing game: {e}")
         break

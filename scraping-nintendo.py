@@ -6,7 +6,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.common.exceptions import TimeoutException
 import pymongo
 from dotenv import load_dotenv
@@ -37,26 +36,24 @@ options.add_argument("--disable-gpu")
 options.add_argument("--no-sandbox")
 # options.binary_location = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"  # Adjust path if needed
 
-service = Service('C:\\Users\\Administrator\\.wdm\drivers\\chromedriver\\win64\\131.0.6778.204\\chromedriver-win32\\chromedriver.exe')
+service = Service(r'C:\\Users\\Administrator\\.wdm\drivers\\chromedriver\\win64\\131.0.6778.204\\chromedriver-win32\\chromedriver.exe')
 browser = webdriver.Chrome(service=service, options=options)
-
 url = "https://www.nintendo.com/us/store/games/#show=1&p=1&sort=df"
-
 browser.get(url)
 
 # load more
-count = 0
-while True:
-    try:
-        load_more_button = WebDriverWait(browser, 60).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[span[text()='Load more results']]"))
-        )
-        load_more_button.click()
-        count += 1
-        print("-"*20, "Load more button", count, " times clikced","-"*20)
-    except TimeoutException:
-        print("Timeout: Load more button not found or not clickable.")
-        break
+# count = 0
+# while True:
+#     try:
+#         load_more_button = WebDriverWait(browser, 60).until(
+#             EC.element_to_be_clickable((By.XPATH, "//button[span[text()='Load more results']]"))
+#         )
+#         load_more_button.click()
+#         count += 1
+#         print("-"*20, "Load more button", count, " times clikced","-"*20)
+#     except TimeoutException:
+#         print("Timeout: Load more button not found or not clickable.")
+#         break
 
 # Parse the loaded page
 soup = BeautifulSoup(browser.page_source, 'html.parser')
@@ -81,18 +78,18 @@ for game in games:
         # Release data
         section = details_soup.find('div', class_='sc-m2d4bo-0 dzfqOu')
         
-        tmp = section.find('h3', text='Release date')
+        tmp = section.find('h3', string='Release date')
         release_date = tmp.find_next('div').text.strip() if tmp else "No Release Date"
         
         # cateories
-        categories = [genre.text for genre in section.find_all('h3', text='Genre')[0].find_next('div').find_all('a')]
+        categories = [genre.text for genre in section.find_all('h3', string='Genre')[0].find_next('div').find_all('a')]
         
         # publisher
-        tmp = section.find('h3', text='Publisher')
+        tmp = section.find('h3', string='Publisher')
         publisher = tmp.find_next('div').find('a').text.strip() if tmp else "No Pulblisher"
         
         # Rating
-        tmp = section.find('h3', text='ESRB rating')
+        tmp = section.find('h3', string='ESRB rating')
         rating = tmp.find_next('div').find('a').text.strip() if tmp else "No Rating"
 
         # Short description
@@ -113,14 +110,15 @@ for game in games:
         # Prices in different regions
         prices = {}
         # USA
-        tmp = details_soup.find('span', class_='W990N QS4uJ').text.strip()   
+        tmp = (details_soup.find('span', class_='W990N QS4uJ') or details_soup.find('div', class_='o2BsP QS4uJ'))
+        tmp = tmp.text.strip() if tmp else ""
         prices["us"] = tmp.split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATELY"
 
         # Brazil
         tmp = details_link
         browser.get(tmp.replace("/us/",'/pt-br/'))
         price_soup = BeautifulSoup(browser.page_source, 'html.parser')
-        tmp = price_soup.find('span', class_='W990N QS4uJ')
+        tmp = (price_soup.find('span', class_='W990N QS4uJ') or price_soup.find('div', class_='o2BsP QS4uJ'))
         tmp = tmp.text.strip().replace('\xa0',' ') if tmp else ""
         prices['br'] = tmp.split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATELY"
 

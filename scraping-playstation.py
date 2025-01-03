@@ -85,7 +85,7 @@ for i in range(gameCount):
     full_description = soup.find(attrs={"data-qa": "pdp#overview"}).text
     gameInfo["full description"] = full_description
     
-    # screenshorta
+    # screenshort
     screenshorts = []
     gameInfo["screenshorts"] = screenshorts
     

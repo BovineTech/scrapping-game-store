@@ -1,0 +1,2 @@
+MONGO_URI="mongodb+srv://thierrycaillibot5:LHoQJT9mC8i4KzvP@gamecluster.vqcxn.mongodb.net/"
+service = Service(r'C:\Users\Administrator\.wdm\drivers\chromedriver\win64\131.0.6778.204\chromedriver-win32\chromedriver.exe')

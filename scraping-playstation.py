@@ -57,19 +57,16 @@ li_tag = li_tags[-1]
 page_num = int(li_tag.find('span', class_="psw-fill-x").text.strip())
 
 for i in range(page_num):
-    url = f"https://store.playstation.com/en-us/pages/browse/{i}"
+    url = f"https://store.playstation.com/en-us/pages/browse/{i+1}"
     response = requests.get(url)
     soup = BeautifulSoup(response.content, "html.parser")
     all_links = [a['href'] for a in soup.find_all('a', href=True)]
     filtered_links = [link for link in all_links if re.match(r"/en-us/concept/\d+", link)]
     totalLinks += filtered_links
-    print("-"*30, i, "-"*30, "\n")
+    print("-"*30, i + 1, "-"*30, "\n")
 
-gameCount  = len(totalLinks)
-
-for i in range(gameCount):
-    url = "https://store.playstation.com" + totalLinks[i]
-    response = requests.get(url)
+for link in totalLinks:
+    response = requests.get("https://store.playstation.com" + link)
     soup = BeautifulSoup(response.content, "html.parser")
     
     # Game title    
@@ -78,7 +75,10 @@ for i in range(gameCount):
     full_description = soup.find(attrs={"data-qa": "pdp#overview"}).text
     header_img_tag = soup.find('img', {'data-qa': 'gameBackgroundImage#heroImage#preview'})
     header_image = header_img_tag['src']
-    rating = soup.find(attrs={"data-qa": "mfe-star-rating#overall-rating#average-rating"}).text
+
+    tmp = soup.find(attrs={"data-qa": "mfe-star-rating#overall-rating#average-rating"})
+    rating = tmp.text if tmp else "N/A"
+
     publisher = soup.find(attrs={'data-qa': "gameInfo#releaseInformation#publisher-value"}).text
     platforms = soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#platform-value'}).text
     release_date = soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#releaseDate-value'}).text

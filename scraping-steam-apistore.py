@@ -3,13 +3,14 @@ from pymongo import MongoClient
 
 from dotenv import load_dotenv
 import os
+import time
 
 # MongoDB setup
 load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 client = MongoClient(MONGO_URI)
 db = client["test"]
-collection = db["steam_games"]
+collection = db["steam_games1"]
 STEAM_API_URL = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
 
 regions = [
@@ -79,7 +80,7 @@ def get_game_details(app_id):
                 "release_date": game_data.get("release_date", {}).get("date", "N/A"),
             }
         else:
-            return {"error": f"-------------{app_id}--------------Game details not available-------------------------------------"}
+            return {"error": "Game details not available ------"}
     except Exception as e:
         return {"error": f"Error fetching game details: {e}"}
     for region in regions:
@@ -102,16 +103,25 @@ def get_game_details(app_id):
 def save_to_mongo(game_details):
     try:
         collection.insert_one(game_details)
-        print(f"----------------'{game_details['appid']}'----------Game '{game_details['title']}' saved to MongoDB!")
+        # print(f"-----------Game '{game_details['title']}' saved to MongoDB!--------------")
     except Exception as e:
         print(f"Error saving to MongoDB: {e}")
 
 if __name__ == "__main__":
     appid_list = get_app_list()
-    if appid_list:
-        for i in range(len(appid_list)):
-            game_details = get_game_details(appid_list[i]['appid'])
-            if "error" in game_details:
-                print(game_details["error"])
-            else:
-                save_to_mongo(game_details)
+    index = 0
+
+    tmp_count = 0
+    while index < len(appid_list):
+        game_details = get_game_details(appid_list[index]['appid'])
+        if "error" in game_details:
+            if "429" in game_details['error']:
+                time.sleep(5)
+                print(appid_list[index]['appid'], "------too many requests : sleep 5s")
+            else: print(appid_list[index]['appid'], "------",game_details["error"])
+        else:
+            print(appid_list[index]['appid'], f"------'{game_details['title']}':saved to MongoDB")
+            save_to_mongo(game_details)
+            tmp_count += 1
+            if tmp_count == 5: break
+        index += 1

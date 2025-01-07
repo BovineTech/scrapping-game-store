@@ -16,7 +16,7 @@ MONGO_URI = os.getenv("MONGO_URI")
 
 client = pymongo.MongoClient(MONGO_URI)
 db = client["test"]
-collection = db["xbox_games"]
+collection = db["xbox_games1"]
 
 regions = [
         # "en-us",  # United States as default
@@ -75,7 +75,9 @@ while True:
 soup = BeautifulSoup(browser.page_source, 'html.parser')
 games = soup.find_all('div', class_='ProductCard-module__cardWrapper___6Ls86 shadow') # Update with the correct class
 
-for game in games:
+i = 0
+while i < len(games):
+    game = games[i]
     try:
         details_link = game.find('a', href=True)['href']
         browser.get(details_link)
@@ -99,7 +101,7 @@ for game in games:
         full_description = tmp.text.strip() if tmp else "No Full Description"
 
         tmp = details_soup.find('section', {'aria-label' : 'Gallery'})
-        screenshots = [img['src'] for img in tmp.find_all('img')] if tmp else "No Screenshot"
+        screenshots = [img['src'] for img in tmp.find_all('img')] if tmp else []
 
         tmp = details_soup.find('img', class_='WrappedResponsiveImage-module__image___QvkuN ProductDetailsHeader-module__productImage___QK3JA')
         header_image = tmp['src'] if tmp else "No Game Header Imgae"
@@ -148,8 +150,11 @@ for game in games:
         # Insert into MongoDB
         collection.insert_one(game_data)
         print("-"*10, "saved : ", title, "-"*10)
+
+        i += 1
+        # if i == 5: break
     except Exception as e:
-        print(f"Error processing game: {e}")
-        break
+        # print(f"Error processing game: {e}")
+        print("-"*30, "! exception occur : plz check the network !", "-"*30)
 
 browser.quit()

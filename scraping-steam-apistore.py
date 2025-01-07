@@ -10,7 +10,7 @@ load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 client = MongoClient(MONGO_URI)
 db = client["test"]
-collection = db["steam_games"]
+collection = db["steam_games1"]
 STEAM_API_URL = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
 
 regions = [
@@ -110,6 +110,8 @@ def save_to_mongo(game_details):
 if __name__ == "__main__":
     appid_list = get_app_list()
     index = 0
+
+    tmp_count = 0
     while index < len(appid_list):
         game_details = get_game_details(appid_list[index]['appid'])
         if "error" in game_details:
@@ -120,4 +122,6 @@ if __name__ == "__main__":
         else:
             print(appid_list[index]['appid'], f"------'{game_details['title']}':saved to MongoDB")
             save_to_mongo(game_details)
-            index += 1
+            tmp_count += 1
+            if tmp_count == 5: break
+        index += 1

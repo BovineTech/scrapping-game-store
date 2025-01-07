@@ -38,22 +38,24 @@ options.add_argument("--no-sandbox")
 
 service = Service(r'C:\\Users\\Administrator\\.wdm\drivers\\chromedriver\\win64\\131.0.6778.204\\chromedriver-win32\\chromedriver.exe')
 browser = webdriver.Chrome(service=service, options=options)
-url = "https://www.nintendo.com/us/store/games/#show=1&p=1&sort=df"
+
+# url = "https://www.nintendo.com/us/store/games/#show=1&p=1&sort=df"
+url = "https://www.nintendo.com/us/store/games/#corePlatforms=Nintendo+Switch&f=corePlatforms&p=1&sort=df"
 browser.get(url)
 
 # load more
-# count = 0
-# while True:
-#     try:
-#         load_more_button = WebDriverWait(browser, 60).until(
-#             EC.element_to_be_clickable((By.XPATH, "//button[span[text()='Load more results']]"))
-#         )
-#         load_more_button.click()
-#         count += 1
-#         print("-"*20, "Load more button", count, " times clikced","-"*20)
-#     except TimeoutException:
-#         print("Timeout: Load more button not found or not clickable.")
-#         break
+count = 0
+while True:
+    try:
+        load_more_button = WebDriverWait(browser, 60).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[span[text()='Load more results']]"))
+        )
+        load_more_button.click()
+        count += 1
+        print("-"*20, "Load more button", count, " times clikced","-"*20)
+    except TimeoutException:
+        print("Timeout: Load more button not found or not clickable.")
+        break
 
 # Parse the loaded page
 soup = BeautifulSoup(browser.page_source, 'html.parser')

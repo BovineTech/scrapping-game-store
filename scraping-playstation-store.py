@@ -10,7 +10,7 @@ load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 client = pymongo.MongoClient(MONGO_URI)
 db = client["test"]
-collection = db["playstation_games"]
+collection = db["playstation_games1"]
 
 totalLinks =[]
 
@@ -55,6 +55,8 @@ ol_tag = soup.find('ol', class_="psw-l-space-x-1 psw-l-line-center psw-list-styl
 li_tags = ol_tag.find_all('li')
 li_tag = li_tags[-1]
 page_num = int(li_tag.find('span', class_="psw-fill-x").text.strip())
+
+tmp_count = 0
 
 for i in range(page_num):
     url = f"https://store.playstation.com/en-us/pages/browse/{i+1}"
@@ -111,4 +113,6 @@ for link in totalLinks:
     # Insert into MongoDB
     collection.insert_one(game_data)
     print("-"*10, "saved : ", title, "-"*10)
+    tmp_count += 1
+    if tmp_count == 5: break
     

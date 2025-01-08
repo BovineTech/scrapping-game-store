@@ -1,0 +1,5 @@
+2025-01-08 06:16:52,461 - INFO - ========== Starting scraper_steam.py... ==========
+2025-01-08 06:20:05,396 - INFO - ========== Successfully ran scraper_steam.py and Updated db. ==========
+2025-01-08 06:20:05,397 - INFO - ========== Starting scraper_nintendo.py... ==========
+2025-01-08 06:23:32,378 - INFO - ========== Successfully ran scraper_nintendo.py and Updated db. ==========
+2025-01-08 06:23:33,379 - INFO - ========== Starting scraper_steam.py... ==========

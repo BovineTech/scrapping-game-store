@@ -62,7 +62,6 @@ def main():
     db = get_mongo_db()
 
     index = 0
-    count = 0   #
     while index < len(apps):
         app = apps[index]
         game_data = fetch_game_details(app["appid"])
@@ -76,7 +75,6 @@ def main():
             count += 1
             save_to_mongo(db, "steam_games1", game_data)
             print(f"Saved Steam game: {game_data['title']}")
-            if count == 5: break    #
         index += 1
 
 if __name__ == "__main__":

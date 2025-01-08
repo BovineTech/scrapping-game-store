@@ -121,8 +121,7 @@ def main():
     browser = get_selenium_browser()
 
     index = 0
-    # while index < len(games):
-    while index < 50:
+    while index < len(games):
         game_data = process_nintendo_game(browser, games[index])
         if "error" in game_data:
             time.sleep(5)

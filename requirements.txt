@@ -3,3 +3,10 @@ requests
 pymongo
 selenium
 chromedriver
+time
+schedule
+subprocess
+logging
+dotenv
+os
+re

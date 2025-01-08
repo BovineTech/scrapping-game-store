@@ -72,7 +72,6 @@ def main():
                 continue
             else: print(app['appid'], "------",game_data["error"])
         else:
-            count += 1
             save_to_mongo(db, "steam_games1", game_data)
             print(f"Saved Steam game: {game_data['title']}")
         index += 1

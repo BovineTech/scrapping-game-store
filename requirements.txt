@@ -9,3 +9,5 @@ logging
 flask
 flask-pymongo
 Flask-JWT-Extended
+psutil
+flask_cors

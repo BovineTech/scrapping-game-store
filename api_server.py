@@ -1,78 +1,72 @@
-from fastapi import FastAPI, HTTPException, Query, Depends
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from pymongo import MongoClient
-from typing import List, Optional
+from flask import Flask, jsonify, request
+from flask_pymongo import PyMongo
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token
 import os
+from dotenv import load_dotenv
 
-# Initialize FastAPI app
-app = FastAPI()
+# Flask app initialization
+app = Flask(__name__)
 
-# Token-based authorization
-security = HTTPBearer()
+# MongoDB URI
+load_dotenv()
+app.config["MONGO_URI"] = os.getenv("MONGO_URI") + "test"
+app.config["JWT_SECRET_KEY"] = os.urandom(24)  # Secret key for JWT
 
-# MongoDB connection
-MONGO_URI = os.getenv("MONGO_URI", "your_online_mongo_uri")
-client = MongoClient(MONGO_URI)
-db = client["your_database_name"]
+# Initialize PyMongo and JWT
+mongo = PyMongo(app)
+jwt = JWTManager(app)
 
-# Collections
-COLLECTIONS = ["steam_games", "xbox_games", "nintendo_games", "playstation_games"]
-
-# Authentication function
-def authorize(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    if credentials.credentials != "your_secret_token":
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    return credentials
-
-@app.get("/")
-def root():
-    return {"message": "Welcome to the Games API"}
-
-# 1. Authorization Endpoint (Handled with token in headers)
-
-# 2. Get All Data (with pagination, filtering)
-@app.get("/games")
-def get_all_games(
-    collection: str = Query(..., description="Collection name"),
-    region: Optional[str] = Query(None, description="Filter by region"),
-    page: int = Query(1, ge=1, description="Page number"),
-    limit: int = Query(10, ge=1, le=100, description="Number of items per page"),
-    _ = Depends(authorize)
-):
-    if collection not in COLLECTIONS:
-        raise HTTPException(status_code=400, detail="Invalid collection name")
-
-    # Fetch data with optional region filter
+# Helper function to paginate results
+def paginate(collection, page, per_page, filters=None):
     query = {}
+    if filters:
+        query = filters
+    results = list(collection.find(query, {"_id": 0}).skip((page - 1) * per_page).limit(per_page))
+    return results
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.json.get("username")
+    password = request.json.get("password")
+    
+    if username == "admin" and password == "password123":  # Replace with real authentication
+        token = create_access_token(identity=username)
+        return jsonify(access_token=token), 200
+    else:
+        return jsonify({"msg": "Invalid credentials"}), 401
+    
+@app.route('/games', methods=['GET'])
+@jwt_required()  # Protect this route with JWT
+def get_games():
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 10))
+    service = request.args.get('service')
+    region = request.args.get('region')
+    
+    filters = {}
     if region:
-        query[f"prices.{region}"] = {"$exists": True}
+        filters["prices." + region] = {"$ne": "Free or Not Available"}  # Example filter for valid prices
 
-    skip = (page - 1) * limit
-    data = list(db[collection].find(query).skip(skip).limit(limit))
-    for doc in data:
-        doc["_id"] = str(doc["_id"])  # Convert ObjectId to string
+    if service == "steam":
+        collection = mongo.db.steam_games
+    elif service == "xbox":
+        collection = mongo.db.xbox_games
+    elif service == "playstation":
+        collection = mongo.db.playstation_games
+    elif service == "nintendo":
+        collection = mongo.db.nintendo_games
+    else: # If no service is provided, we return data from all services
+        collection = mongo.db.steam_games  # Defaulting to steam if no service is selected
 
-    total = db[collection].count_documents(query)
-    return {
-        "page": page,
-        "limit": limit,
-        "total": total,
-        "data": data,
-    }
+    # Get paginated data from the collection
+    games = paginate(collection, page, per_page, filters)
 
-# 3. Get Document by ID
-@app.get("/games/{collection}/{game_id}")
-def get_game_by_id(
-    collection: str,
-    game_id: str,
-    _ = Depends(authorize)
-):
-    if collection not in COLLECTIONS:
-        raise HTTPException(status_code=400, detail="Invalid collection name")
+    for game in games:
+        if region in game['prices']:
+            game['price'] = game['prices'].get(region, "Not Available")
+            del game['prices']
 
-    game = db[collection].find_one({"_id": ObjectId(game_id)})
-    if not game:
-        raise HTTPException(status_code=404, detail="Game not found")
+    return jsonify({"games": games}), 200
 
-    game["_id"] = str(game["_id"])
-    return game
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=5000, debug=False)

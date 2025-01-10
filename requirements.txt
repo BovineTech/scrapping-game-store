@@ -6,5 +6,6 @@ chromedriver
 schedule
 subprocess
 logging
-fastapi
-uvicorn
+flask
+flask-pymongo
+Flask-JWT-Extended

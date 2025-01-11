@@ -2,7 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 import time
 import re
-from utils import save_to_mongo, get_mongo_db, regions_playstation
+from utils import log_info, save_to_mongo, get_mongo_db, regions_playstation
 
 
 PLAYSTATION_URL = "https://store.playstation.com/en-us/pages/browse/1"
@@ -76,6 +76,7 @@ def process_playstation_game(game):
         return {"error": f"Error fetching game details: {e}"}
 
 def main():
+    log_info("Waiting for fetching games...")
     total_pages = get_total_pages()
     games = fetch_playstation_games(total_pages)
     db = get_mongo_db()
@@ -89,6 +90,7 @@ def main():
             continue
         else:
             save_to_mongo(db, "playstation_games1", game_data)
+            log_info(f"Saved Playstation game {index+1}: {game_data['title']}")
             print(f"-------Saved PlayStation game: {game_data['title']}.--------")
         index += 1        
 

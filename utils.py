@@ -1,4 +1,5 @@
 import os
+import logging
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from dotenv import load_dotenv
@@ -123,9 +124,14 @@ def save_to_mongo(db, collection_name, data):
 
 def update_mongo(db, scraper):
     scraper.replace(".py","")
-    collection_name = scraper.split('-')[1] + "_games"
+    collection_name = scraper.split('_')[1] + "_games"
     db.drop_collection(collection_name)
     db[collection_name + '1'].rename(collection_name)
+
+def initialize_mongo(db, scraper):
+    scraper.replace(".py","")
+    collection_name = scraper.split('_')[1] + "_games1"
+    db.drop_collection(collection_name)
 
 def get_selenium_browser():
     options = Options()
@@ -179,3 +185,19 @@ def search_game(browser, search_dom, result_dom, title):
         return soup
     except TimeoutException:
         return []
+
+# Configure logging
+logging.basicConfig(
+    filename="scraper.log",
+    filemode="a",
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+)
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+
+def log_info(message):
+    logging.info(message)
+
+def log_error(message):
+    logging.error(message)

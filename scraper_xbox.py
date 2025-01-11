@@ -1,6 +1,6 @@
 # xbox_scraper.py
 from bs4 import BeautifulSoup
-from utils import get_mongo_db, save_to_mongo, get_selenium_browser, click_loadmore_btn, regions_xbox
+from utils import get_mongo_db, save_to_mongo, get_selenium_browser, log_info, click_loadmore_btn, regions_xbox
 
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
 
@@ -78,6 +78,7 @@ def process_xbox_game(browser, game):
 def main():
     browser = get_selenium_browser()
     browser.get(XBOX_URL)
+    log_info("Waiting for fetching games...")
     games = fetch_xbox_games(browser)
     db = get_mongo_db()
 
@@ -86,6 +87,7 @@ def main():
         try:
             game_data = process_xbox_game(browser, games[index])
             save_to_mongo(db, "xbox_games1", game_data)
+            log_info(f"Saved Xbox game {index+1}: {game_data['title']}")
             print(f"-------Saved Xbox game: {game_data['title']}.---------")
             index += 1
         except Exception:

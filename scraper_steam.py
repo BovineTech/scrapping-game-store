@@ -1,6 +1,6 @@
 import requests
 import time
-from utils import save_to_mongo, get_mongo_db, regions_steam
+from utils import save_to_mongo, get_mongo_db, log_info, regions_steam
 
 STEAM_API_URL = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
 
@@ -73,6 +73,7 @@ def main():
             else: print(app['appid'], "------",game_data["error"])
         else:
             save_to_mongo(db, "steam_games1", game_data)
+            log_info(f"Saved Steam game {index+1}: {game_data['title']}")
             print(f"Saved Steam game: {game_data['title']}")
         index += 1
 

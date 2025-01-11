@@ -2,7 +2,7 @@ import requests
 import time
 import re
 from bs4 import BeautifulSoup
-from utils import get_mongo_db, save_to_mongo, get_selenium_browser, search_game, regions_nintendo
+from utils import log_info, get_mongo_db, save_to_mongo, get_selenium_browser, search_game, regions_nintendo
 
 API_URL = "https://api.sampleapis.com/switch/games" # API endpoint
 JAPAN_URL = "https://www.nintendo.com/jp/software/switch/index.html?sftab=all"
@@ -116,6 +116,7 @@ def process_nintendo_game(browser, game):
             print("-"*30, "! exception occur : plz check the network or part!", "-"*30)
 
 def main():
+    log_info("Waiting for fetching games...")
     games = fetch_games()
     db = get_mongo_db()
     browser = get_selenium_browser()
@@ -129,6 +130,7 @@ def main():
             continue
         else:
             save_to_mongo(db, "nintendo_games1", game_data)
+            log_info(f"Saved Nintendo game {index+1}: {game_data['title']}")
             print(f"--------Saved Nintendo game: {game_data['title']}--------")
         index += 1
 

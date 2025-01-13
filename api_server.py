@@ -4,7 +4,7 @@ import subprocess
 from flask_cors import CORS
 from flask import Flask, jsonify, send_file, request
 from flask_pymongo import PyMongo
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
 from flask_swagger_ui import get_swaggerui_blueprint
 from dotenv import load_dotenv
 from utils import log_info
@@ -26,7 +26,7 @@ server_port = os.getenv("server_port", "5000")
 mongo = PyMongo(app)
 jwt = JWTManager(app)
 
-# Swagger configuration
+# Swagger configuration with Bearer token authentication
 swagger_config = {
     "swagger": "2.0",
     "info": {
@@ -37,6 +37,19 @@ swagger_config = {
     "host": f"{access_ip}:{server_port}",
     "basePath": "/",
     "schemes": ["http"],
+    "securityDefinitions": {
+        "Bearer": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "headers",
+            "description": "Enter your Bearer token in the format **Bearer <token>**"
+        }
+    },
+    "security": [
+        {
+            "Bearer": []
+        }
+    ],
     "paths": {
         "/login": {
             "post": {
@@ -108,6 +121,11 @@ swagger_config = {
                         "type": "string"
                     }
                 ],
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "A paginated list of games.",
@@ -133,6 +151,11 @@ swagger_config = {
             "post": {
                 "summary": "Start Scheduler",
                 "description": "Start the game scraper scheduler process.",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Scheduler started successfully."
@@ -147,6 +170,11 @@ swagger_config = {
             "post": {
                 "summary": "Stop Scheduler",
                 "description": "Stop the game scraper scheduler process.",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Scheduler stopped successfully."
@@ -178,6 +206,11 @@ swagger_config = {
                         "required": True
                     }
                 ],
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Game count retrieved successfully."
@@ -192,6 +225,11 @@ swagger_config = {
             "get": {
                 "summary": "Fetch Logs",
                 "description": "Retrieve the scraper logs file.",
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "Logs retrieved successfully."
@@ -205,6 +243,7 @@ swagger_config = {
     },
 }
 
+# The Swagger JSON will be publicly accessible, but other endpoints will require authentication
 @app.route("/swagger.json")
 def swagger_json():
     return jsonify(swagger_config)
@@ -278,14 +317,6 @@ def fetch_logs():
     except Exception as e:
         return jsonify({"msg": f"Error fetching logs: {e}"}), 500
 
-# Helper function to paginate results
-def paginate(collection, page, per_page, filters=None):
-    query = {}
-    if filters:
-        query = filters
-    results = list(collection.find(query, {"_id": 0}).skip((page - 1) * per_page).limit(per_page))
-    return results
-
 @app.route('/login', methods=['POST'])
 def login():
     username = request.json.get("username")
@@ -327,6 +358,14 @@ def get_games():
             game['price'] = game['prices'].get(region, "Not Available")
             del game['prices']
     return jsonify({"games": games}), 200
+
+# Helper function to paginate results
+def paginate(collection, page, per_page, filters=None):
+    query = {}
+    if filters:
+        query = filters
+    results = list(collection.find(query, {"_id": 0}).skip((page - 1) * per_page).limit(per_page))
+    return results
 
 if __name__ == '__main__':
     app.run(host=access_ip, port=server_port, debug=False)

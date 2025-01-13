@@ -14,8 +14,8 @@ from selenium.webdriver.common.keys import Keys
 
 load_dotenv()
 
-chromedriver_path = r'C:\Users\Administrator\.wdm\drivers\chromedriver\win64\131.0.6778.204\chromedriver-win32\chromedriver.exe'
-chrome_path = r"C:\Program Files\Google\Chrome\Application\chrome.exe"  # if needed
+chromedriver_path = os.getenv("chromedriver_path")
+chrome_path = os.getenv("chrome_path")
 
 regions_playstation = [
     # 'en-us',

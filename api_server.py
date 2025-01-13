@@ -16,6 +16,8 @@ CORS(app)
 load_dotenv()
 app.config["MONGO_URI"] = os.getenv("MONGO_URI") + "test"
 app.config["JWT_SECRET_KEY"] = os.urandom(24)  # Secret key for JWT
+access_ip = os.getenv("access_ip")
+server_port = os.getenv("server_port")
 
 # Initialize PyMongo and JWT
 mongo = PyMongo(app)
@@ -133,4 +135,4 @@ def get_games():
     return jsonify({"games": games}), 200
 
 if __name__ == '__main__':
-    app.run(host='127.0.0.1', port=5000, debug=False)
+    app.run(host=access_ip, port=server_port, debug=False)

@@ -10,3 +10,5 @@ Flask-JWT-Extended
 psutil
 flask_cors
 env
+flask-swagger
+flask-swagger-ui

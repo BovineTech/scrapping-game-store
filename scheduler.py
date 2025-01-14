@@ -1,7 +1,8 @@
 import time
+import os
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
-from utils import get_mongo_db, log_info, log_error
+from utils import log_info, log_error
 
 SCRAPER_INTERVALS = {
     "scraper_steam.py": 10,  # Run every 10 seconds
@@ -10,10 +11,18 @@ SCRAPER_INTERVALS = {
     "scraper_xbox.py": 25,  # Run every 25 seconds
 }
 
+processes = []  # List to store subprocess references
+
 def run_scraper(scraper):
     try:
         log_info(f"========== Starting {scraper}... ==========")
-        subprocess.run(["python", scraper], check=True)
+        # Use CREATE_NEW_PROCESS_GROUP for Windows
+        proc = subprocess.Popen(
+            ["python", scraper],
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+        )
+        processes.append(proc)  # Add to the list of subprocesses
+        proc.wait()  # Wait for the process to finish
         log_info(f"========== Finished {scraper} and Updated db. ==========")
     except Exception as e:
         log_error(f"Error running {scraper}: {e}")
@@ -23,12 +32,8 @@ def main():
         while True:
             futures = []
             for scraper, interval in SCRAPER_INTERVALS.items():
-                futures.append((scraper, executor.submit(run_scraper, scraper), interval))
-
-            for scraper, future, interval in futures:
-                future.result()  # Wait for the scraper to finish
-                log_info(f"Waiting {interval} seconds before running {scraper} again...")
-                time.sleep(interval)  # Wait for the specified interval before the next iteration
+                futures.append(executor.submit(run_scraper, scraper))
+                time.sleep(interval)  # Delay before starting the next scraper
 
 if __name__ == "__main__":
     main()

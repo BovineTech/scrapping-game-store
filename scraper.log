@@ -1,0 +1,16 @@
+2025-01-14 13:45:23,376 - INFO - ******************** Started Scheduler... ********************
+2025-01-14 13:45:24,400 - INFO - ========== Starting scraper_steam.py... ==========
+2025-01-14 13:45:34,401 - INFO - ========== Starting scraper_nintendo.py... ==========
+2025-01-14 13:45:35,527 - INFO - Waiting for fetching Nintendo games...
+2025-01-14 13:45:49,403 - INFO - ========== Starting scraper_playstation.py... ==========
+2025-01-14 13:45:50,641 - INFO - Waiting for fetching Playstation games...
+2025-01-14 13:46:09,404 - INFO - ========== Starting scraper_xbox.py... ==========
+2025-01-14 13:46:25,134 - INFO - ******************** Killed Scheduler ********************
+2025-01-14 13:46:25,435 - INFO - Child process 15028 no longer exists.
+2025-01-14 13:46:25,443 - INFO - Child process 820 no longer exists.
+2025-01-14 13:46:25,443 - INFO - Child process 16688 no longer exists.
+2025-01-14 13:46:25,465 - INFO - Child process 8932 no longer exists.
+2025-01-14 13:46:25,565 - INFO - Child process 23188 no longer exists.
+2025-01-14 13:46:25,572 - INFO - Child process 12188 no longer exists.
+2025-01-14 13:46:25,572 - INFO - Child process 16284 no longer exists.
+2025-01-14 13:46:25,642 - INFO - Child process 20032 no longer exists.

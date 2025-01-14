@@ -291,15 +291,37 @@ def stop_scheduler():
     try:
         scheduler_stopped = False
         for proc in psutil.process_iter(attrs=['pid', 'cmdline']):
-            cmdline = proc.info['cmdline']
-            if cmdline and "scheduler.py" in cmdline:
-                proc.kill()
-                scheduler_stopped = True
-                log_info("******************** Killed Scheduler... ********************")
-                break
-        
+            try:
+                cmdline = proc.info['cmdline']
+                if cmdline and "scheduler.py" in cmdline:
+                    # Kill the scheduler process
+                    proc.terminate()  # Send a termination signal to the process
+                    proc.wait(timeout=5)  # Wait for the process to terminate
+                    scheduler_stopped = True
+                    log_info("******************** Killed Scheduler ********************")
+                    # Terminate child processes (subprocesses)
+                    try:
+                        children = proc.children(recursive=True)  # Get child processes
+                        for child in children:
+                            try:
+                                child.terminate()  # Terminate each child process
+                                child.wait(timeout=5)  # Wait for child to terminate
+                            except psutil.NoSuchProcess:
+                                print(f"Child process {child.pid} no longer exists.")
+                            except Exception as e:
+                                print(f"Error terminating child process {child.pid}: {e}")
+                    except psutil.NoSuchProcess:
+                        print(f"Parent process {proc.pid} no longer exists.")
+                    except Exception as e:
+                        print(f"Error retrieving child processes: {e}")
+                    break
+            except psutil.NoSuchProcess:
+                print(f"Process no longer exists: {proc.pid}.")
+            except Exception as e:
+                print(f"Error processing scheduler process {proc.pid}: {e}")
+
         if scheduler_stopped:
-            return jsonify({"msg": "Scheduler stopped"}), 200
+            return jsonify({"msg": "Scheduler and its subprocesses stopped"}), 200
         else:
             return jsonify({"msg": "Scheduler not running"}), 404
     except Exception as e:

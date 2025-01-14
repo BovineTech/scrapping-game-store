@@ -4,7 +4,7 @@ import subprocess
 from flask_cors import CORS
 from flask import Flask, jsonify, send_file, request
 from flask_pymongo import PyMongo
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
+from flask_jwt_extended import JWTManager, create_access_token, verify_jwt_in_request
 from flask_swagger_ui import get_swaggerui_blueprint
 from dotenv import load_dotenv
 from utils import log_info
@@ -18,15 +18,29 @@ load_dotenv()
 app.config["MONGO_URI"] = os.getenv("MONGO_URI") + "test"
 app.config["JWT_SECRET_KEY"] = os.urandom(24)
 
-# Access IP and server port
+# dotenv varibales
 access_ip = os.getenv("access_ip", "127.0.0.1")
 server_port = os.getenv("server_port", "5000")
+username = os.getenv("admin", "admin")
+password = os.getenv("password", "password123")
 
 # Initialize PyMongo and JWT
 mongo = PyMongo(app)
 jwt = JWTManager(app)
 
-# Swagger configuration with Bearer token authentication
+# Custom token verification without Bearer prefix
+def custom_token_verification():
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        return jsonify({"msg": "Missing Authorization Header"}), 401
+
+    token = auth_header.strip()
+    try:
+        verify_jwt_in_request(lambda: token)
+    except Exception as e:
+        return jsonify({"msg": f"Invalid token: {str(e)}"}), 401
+
+# Swagger configuration without Bearer prefix
 swagger_config = {
     "swagger": "2.0",
     "info": {
@@ -38,16 +52,16 @@ swagger_config = {
     "basePath": "/",
     "schemes": ["http"],
     "securityDefinitions": {
-        "Bearer": {
+        "TokenAuth": {
             "type": "apiKey",
             "name": "Authorization",
             "in": "headers",
-            "description": "Enter your Bearer token in the format **Bearer <token>**"
+            "description": "Enter your token without the 'Bearer ' prefix"
         }
     },
     "security": [
         {
-            "Bearer": []
+            "TokenAuth": []
         }
     ],
     "paths": {
@@ -123,7 +137,7 @@ swagger_config = {
                 ],
                 "security": [
                     {
-                        "Bearer": []
+                        "TokenAuth": []
                     }
                 ],
                 "responses": {
@@ -153,7 +167,7 @@ swagger_config = {
                 "description": "Start the game scraper scheduler process.",
                 "security": [
                     {
-                        "Bearer": []
+                        "TokenAuth": []
                     }
                 ],
                 "responses": {
@@ -172,7 +186,7 @@ swagger_config = {
                 "description": "Stop the game scraper scheduler process.",
                 "security": [
                     {
-                        "Bearer": []
+                        "TokenAuth": []
                     }
                 ],
                 "responses": {
@@ -208,7 +222,7 @@ swagger_config = {
                 ],
                 "security": [
                     {
-                        "Bearer": []
+                        "TokenAuth": []
                     }
                 ],
                 "responses": {
@@ -227,7 +241,7 @@ swagger_config = {
                 "description": "Retrieve the scraper logs file.",
                 "security": [
                     {
-                        "Bearer": []
+                        "TokenAuth": []
                     }
                 ],
                 "responses": {
@@ -262,8 +276,8 @@ app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
 # Routes
 @app.route('/scheduler/start', methods=['POST'])
-@jwt_required()
 def start_scheduler():
+    custom_token_verification()
     try:
         log_info("******************** Started Scheduler... ********************")
         subprocess.Popen(["python", "scheduler.py"])
@@ -272,8 +286,8 @@ def start_scheduler():
         return jsonify({"msg": f"Error starting scheduler: {e}"}), 500
 
 @app.route('/scheduler/stop', methods=['POST'])
-@jwt_required()
 def stop_scheduler():
+    custom_token_verification()
     try:
         scheduler_stopped = False
         for proc in psutil.process_iter(attrs=['pid', 'cmdline']):
@@ -292,8 +306,8 @@ def stop_scheduler():
         return jsonify({"msg": f"Error stopping scheduler: {str(e)}"}), 500
 
 @app.route('/games/count', methods=['GET'])
-@jwt_required()
 def get_game_count():
+    custom_token_verification()
     service = request.args.get('service')
     if service == "steam":
         collection = mongo.db.steam_games
@@ -310,8 +324,8 @@ def get_game_count():
     return jsonify({"count": count}), 200
 
 @app.route('/logs', methods=['GET'])
-@jwt_required()
 def fetch_logs():
+    custom_token_verification()
     try:
         return send_file("scraper.log", mimetype="text/plain")
     except Exception as e:
@@ -319,18 +333,18 @@ def fetch_logs():
 
 @app.route('/login', methods=['POST'])
 def login():
-    username = request.json.get("username")
-    password = request.json.get("password")
+    uname = request.json.get("username")
+    pwd = request.json.get("password")
     
-    if username == "admin" and password == "password123":
-        token = create_access_token(identity=username)
+    if uname == username and pwd == password:
+        token = create_access_token(identity=uname)
         return jsonify(access_token=token), 200
     else:
         return jsonify({"msg": "Invalid credentials"}), 401
     
 @app.route('/games', methods=['GET'])
-@jwt_required()
 def get_games():
+    custom_token_verification()
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 10))
     service = request.args.get('service')

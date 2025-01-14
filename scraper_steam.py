@@ -36,8 +36,8 @@ def fetch_game_details(app_id):
                     prices[region] = "Not Available"
                 index += 1
             except Exception as e:
-                time.sleep(5)
-                print(app_id, "------too many requests : sleep 5s")
+                time.sleep(60)
+                print(app_id, "------too many requests : waiting for server")
                 
     except Exception as e:
         return {"error": f"Error fetching game details: {e}"}
@@ -67,8 +67,8 @@ def main():
         game_data = fetch_game_details(app["appid"])
         if "error" in game_data:
             if "429" in game_data['error']:
-                time.sleep(5)
-                print(app['appid'], "------too many requests : sleep 5s")
+                time.sleep(60)
+                print(app['appid'], "------too many requests : waiting for server")
                 continue
             else: print(app['appid'], "------",game_data["error"])
         else:

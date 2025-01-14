@@ -125,8 +125,8 @@ def main():
     while index < len(games):
         game_data = process_nintendo_game(browser, games[index])
         if "error" in game_data:
-            time.sleep(5)
             print("-"*40, "plz check the network or part", "-"*40, "\n", game_data["error"])
+            time.sleep(10)
             continue
         else:
             save_to_mongo(db, "nintendo_games1", game_data)

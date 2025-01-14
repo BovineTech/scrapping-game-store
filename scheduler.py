@@ -1,5 +1,6 @@
 import time
 import os
+import platform
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from utils import log_info, log_error
@@ -16,16 +17,28 @@ processes = []  # List to store subprocess references
 def run_scraper(scraper):
     try:
         log_info(f"========== Starting {scraper}... ==========")
-        # Use CREATE_NEW_PROCESS_GROUP for Windows
-        proc = subprocess.Popen(
-            ["python", scraper],
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
-        )
-        processes.append(proc)  # Add to the list of subprocesses
+
+        if platform.system() == "Windows":
+            # On Windows, use CREATE_NEW_PROCESS_GROUP
+            proc = subprocess.Popen(
+                ["python", scraper],
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP  # Only for Windows
+            )
+        else:
+            # On Unix-based systems, use os.setsid() to start the process in a new session
+            proc = subprocess.Popen(
+                ["python", scraper],
+                preexec_fn=os.setsid  # Start process in its own group (Unix/Linux)
+            )
+
+        log_info(f"Process {scraper} started with PID {proc.pid}")
+
         proc.wait()  # Wait for the process to finish
         log_info(f"========== Finished {scraper} and Updated db. ==========")
+
     except Exception as e:
         log_error(f"Error running {scraper}: {e}")
+
 
 def main():
     with ThreadPoolExecutor() as executor:

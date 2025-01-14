@@ -116,7 +116,7 @@ def process_nintendo_game(browser, game):
             print("-"*30, "! exception occur : plz check the network or part!", "-"*30)
 
 def main():
-    log_info("Waiting for fetching games...")
+    log_info("Waiting for fetching Nintendo games...")
     games = fetch_games()
     db = get_mongo_db()
     browser = get_selenium_browser()
@@ -129,7 +129,7 @@ def main():
             time.sleep(10)
             continue
         else:
-            save_to_mongo(db, "nintendo_games1", game_data)
+            save_to_mongo(db, "nintendo_games", game_data)
             log_info(f"Saved Nintendo game {index+1}: {game_data['title']}")
             print(f"--------Saved Nintendo game: {game_data['title']}--------")
         index += 1

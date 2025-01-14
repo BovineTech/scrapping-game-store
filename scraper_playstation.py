@@ -25,7 +25,7 @@ def fetch_playstation_games(total_pages):
         all_links = [a['href'] for a in soup.find_all('a', href=True)]
         filtered_links = [link for link in all_links if re.match(r"/en-us/concept/\d+", link)]
         total_links += filtered_links
-        print("-"*30, i + 1, " page filtered ", "-"*30, "\n")
+        print("-"*30, i + 1, " page filtered from Playstation", "-"*30, "\n")
     return total_links
 
 def process_playstation_game(game):
@@ -76,7 +76,7 @@ def process_playstation_game(game):
         return {"error": f"Error fetching game details: {e}"}
 
 def main():
-    log_info("Waiting for fetching games...")
+    log_info("Waiting for fetching Playstation games...")
     total_pages = get_total_pages()
     games = fetch_playstation_games(total_pages)
     db = get_mongo_db()
@@ -89,7 +89,7 @@ def main():
             time.sleep(10)
             continue
         else:
-            save_to_mongo(db, "playstation_games1", game_data)
+            save_to_mongo(db, "playstation_games", game_data)
             log_info(f"Saved Playstation game {index+1}: {game_data['title']}")
             print(f"-------Saved PlayStation game: {game_data['title']}.--------")
         index += 1        

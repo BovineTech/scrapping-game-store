@@ -119,19 +119,17 @@ def get_mongo_db():
     return db
 
 def save_to_mongo(db, collection_name, data):
-    collection = db[collection_name]
-    collection.insert_one(data)
-
-def update_mongo(db, scraper):
-    scraper.replace(".py","")
-    collection_name = scraper.split('_')[1] + "_games"
-    db.drop_collection(collection_name)
-    db[collection_name + '1'].rename(collection_name)
-
-def initialize_mongo(db, scraper):
-    scraper.replace(".py","")
-    collection_name = scraper.split('_')[1] + "_games1"
-    db.drop_collection(collection_name)
+    title = data.get("title")
+    if title:
+        collection = db[collection_name]
+        existing_data = collection.find_one({"title" : title})
+        if existing_data:
+            collection.update_one(
+                {"_id": existing_data["_id"]},
+                {"$set": data}
+            )
+        else:
+            collection.insert_one(data)
 
 def get_selenium_browser():
     options = Options()
@@ -163,7 +161,7 @@ def click_loadmore_btn(browser, btn_dom):
         btn = browser.find_element(By.XPATH, btn_dom)
         btn.click()
         count += 1
-        print("-"*20, "Load more button", count, " times clikced","-"*20)
+        print("-"*20, "Load more button", count, " times clikced in Xbox","-"*20)
 
 def search_game(browser, search_dom, result_dom, title):
     try:

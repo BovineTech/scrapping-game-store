@@ -37,7 +37,7 @@ def fetch_game_details(app_id):
                 index += 1
             except Exception as e:
                 time.sleep(60)
-                print(app_id, "------too many requests : waiting for server")
+                print("Steam : ", app_id, "------too many requests : waiting for server")
                 
     except Exception as e:
         return {"error": f"Error fetching game details: {e}"}
@@ -68,11 +68,11 @@ def main():
         if "error" in game_data:
             if "429" in game_data['error']:
                 time.sleep(60)
-                print(app['appid'], "------too many requests : waiting for server")
+                # print(app['appid'], "------too many requests : waiting for server")
                 continue
-            else: print(app['appid'], "------",game_data["error"])
+            # else: print("Steam : ", app['appid'], "------",game_data["error"])
         else:
-            save_to_mongo(db, "steam_games1", game_data)
+            save_to_mongo(db, "steam_games", game_data)
             log_info(f"Saved Steam game {index+1}: {game_data['title']}")
             print(f"Saved Steam game: {game_data['title']}")
         index += 1

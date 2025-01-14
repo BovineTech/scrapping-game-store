@@ -1,32 +1,34 @@
-import schedule
 import time
 import subprocess
-from utils import update_mongo, get_mongo_db, initialize_mongo, log_info, log_error
+from concurrent.futures import ThreadPoolExecutor
+from utils import get_mongo_db, log_info, log_error
 
-SCRAPERS = [
-    "scraper_steam.py",
-    "scraper_nintendo.py",
-    "scraper_playstation.py",
-    "scraper_xbox.py",
-]
+SCRAPER_INTERVALS = {
+    "scraper_steam.py": 10,  # Run every 10 seconds
+    "scraper_nintendo.py": 15,  # Run every 15 seconds
+    "scraper_playstation.py": 20,  # Run every 20 seconds
+    "scraper_xbox.py": 25,  # Run every 25 seconds
+}
 
-def run_scrapers():
-    for scraper in SCRAPERS:
-        try:
-            log_info(f"========== Starting {scraper}... ==========")
-            db = get_mongo_db()
-            initialize_mongo(db, scraper)
-            subprocess.run(["python", scraper], check=True)
-            update_mongo(db, scraper)
-            log_info(f"========== Successfully ran {scraper} and Updated db. ==========")
-        except Exception as e:
-            log_error(f"Error running {scraper}: {e}")
+def run_scraper(scraper):
+    try:
+        log_info(f"========== Starting {scraper}... ==========")
+        subprocess.run(["python", scraper], check=True)
+        log_info(f"========== Finished {scraper} and Updated db. ==========")
+    except Exception as e:
+        log_error(f"Error running {scraper}: {e}")
 
 def main():
-    schedule.every(1).seconds.do(run_scrapers)
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
+    with ThreadPoolExecutor() as executor:
+        while True:
+            futures = []
+            for scraper, interval in SCRAPER_INTERVALS.items():
+                futures.append((scraper, executor.submit(run_scraper, scraper), interval))
+
+            for scraper, future, interval in futures:
+                future.result()  # Wait for the scraper to finish
+                log_info(f"Waiting {interval} seconds before running {scraper} again...")
+                time.sleep(interval)  # Wait for the specified interval before the next iteration
 
 if __name__ == "__main__":
     main()

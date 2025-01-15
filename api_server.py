@@ -202,6 +202,25 @@ swagger_config = {
                 }
             }
         },
+        "/scheduler/status": {
+            "post": {
+                "summary": "Scheduler Status",
+                "description": "Check if the game scraper scheduler process is running.",
+                "security": [
+                    {
+                        "TokenAuth": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Scheduler status retrieved successfully."
+                    },
+                    "500": {
+                        "description": "Error occurred while checking the scheduler status."
+                    }
+                }
+            }
+        },
         "/games/count": {
             "get": {
                 "summary": "Get Game Count",
@@ -285,6 +304,13 @@ def is_scheduler_running():
     return False
 
 # Routes
+@app.route('/scheduler/status', methods=['POST'])
+def check_scheduler_status():
+    if is_scheduler_running():
+        return jsonify({"running": True}), 200
+    else:
+        return jsonify({"running": False}), 200
+
 @app.route('/scheduler/start', methods=['POST'])
 def start_scheduler():
     custom_token_verification()

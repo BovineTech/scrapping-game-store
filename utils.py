@@ -149,7 +149,7 @@ def click_loadmore_btn(browser, btn_dom):
     count = 0
     while True:
         try:
-            btn = WebDriverWait(browser, 30).until(
+            btn = WebDriverWait(browser, 60).until(
                 EC.element_to_be_clickable((By.XPATH, btn_dom))
             )
         except TimeoutException:

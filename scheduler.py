@@ -12,41 +12,41 @@ SCRAPER_INTERVALS = {
     "scraper_xbox.py": 25,  # Run every 25 seconds
 }
 
-processes = []  # List to store subprocess references
+def run_scraper(scraper, interval):
+    while True:
+        try:
+            log_info(f"========== Starting {scraper}... ==========")
 
-def run_scraper(scraper):
-    try:
-        log_info(f"========== Starting {scraper}... ==========")
+            if platform.system() == "Windows":
+                # On Windows, use CREATE_NEW_PROCESS_GROUP
+                proc = subprocess.Popen(
+                    ["python", scraper],
+                    creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+                )
+            else:
+                # On Unix-based systems, use os.setsid()
+                proc = subprocess.Popen(
+                    ["python3", scraper],  # Use "python3" on Ubuntu
+                    preexec_fn=os.setsid
+                )
 
-        if platform.system() == "Windows":
-            # On Windows, use CREATE_NEW_PROCESS_GROUP
-            proc = subprocess.Popen(
-                ["python", scraper],
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP  # Only for Windows
-            )
-        else:
-            # On Unix-based systems, use os.setsid() to start the process in a new session
-            proc = subprocess.Popen(
-                ["python", scraper],
-                preexec_fn=os.setsid  # Start process in its own group (Unix/Linux)
-            )
+            log_info(f"Process {scraper} started with PID {proc.pid}")
 
-        log_info(f"Process {scraper} started with PID {proc.pid}")
+            # Wait for the process to finish
+            proc.wait()
 
-        proc.wait()  # Wait for the process to finish
-        log_info(f"========== Finished {scraper} and Updated db. ==========")
+            log_info(f"========== Finished {scraper} and Updated db. ==========")
 
-    except Exception as e:
-        log_error(f"Error running {scraper}: {e}")
+        except Exception as e:
+            log_error(f"Error running {scraper}: {e}")
 
+        # Wait for the interval before restarting the scraper
+        time.sleep(interval)
 
 def main():
     with ThreadPoolExecutor() as executor:
-        while True:
-            futures = []
-            for scraper, interval in SCRAPER_INTERVALS.items():
-                futures.append(executor.submit(run_scraper, scraper))
-                time.sleep(interval)  # Delay before starting the next scraper
+        for scraper, interval in SCRAPER_INTERVALS.items():
+            executor.submit(run_scraper, scraper, interval)
 
 if __name__ == "__main__":
     main()

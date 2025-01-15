@@ -158,6 +158,7 @@ def click_loadmore_btn(browser, btn_dom):
         except Exception as e:
             print(f"Error processing game: {e}")
             print("-"*30, "! exception occur : plz check the network !", "-"*30)
+            continue
         btn = browser.find_element(By.XPATH, btn_dom)
         btn.click()
         count += 1

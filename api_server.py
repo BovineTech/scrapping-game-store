@@ -18,7 +18,7 @@ load_dotenv()
 app.config["MONGO_URI"] = os.getenv("MONGO_URI") + "test"
 app.config["JWT_SECRET_KEY"] = os.urandom(24)
 
-# dotenv varibales
+# dotenv variables
 access_ip = os.getenv("access_ip", "127.0.0.1")
 server_port = os.getenv("server_port", "5000")
 username = os.getenv("admin", "admin")
@@ -274,10 +274,22 @@ swaggerui_blueprint = get_swaggerui_blueprint(
 
 app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
+# Check if scheduler.py is running
+def is_scheduler_running():
+    for proc in psutil.process_iter(attrs=['cmdline']):
+        try:
+            if proc.info['cmdline'] and "scheduler.py" in proc.info['cmdline']:
+                return True
+        except (psutil.NoSuchProcess, KeyError):
+            continue
+    return False
+
 # Routes
 @app.route('/scheduler/start', methods=['POST'])
 def start_scheduler():
     custom_token_verification()
+    if is_scheduler_running():
+        return jsonify({"msg": "The scheduler is already running on the server."}), 400
     try:
         log_info("******************** Started Scheduler... ********************")
         subprocess.Popen(["python", "scheduler.py"])
@@ -288,6 +300,8 @@ def start_scheduler():
 @app.route('/scheduler/stop', methods=['POST'])
 def stop_scheduler():
     custom_token_verification()
+    if not is_scheduler_running():
+        return jsonify({"msg": "Nothing works in server now."}), 400
     try:
         scheduler_stopped = False
         for proc in psutil.process_iter(attrs=['pid', 'cmdline']):
@@ -295,28 +309,28 @@ def stop_scheduler():
                 cmdline = proc.info['cmdline']
                 if cmdline and "scheduler.py" in cmdline:
                     # Kill the scheduler process
-                    proc.terminate()  # Send a termination signal to the process
-                    proc.wait(timeout=5)  # Wait for the process to terminate
+                    proc.terminate()
+                    proc.wait(timeout=5)
                     scheduler_stopped = True
                     log_info("******************** Killed Scheduler ********************")
-                    # Terminate child processes (subprocesses)
+                    # Terminate child processes
                     try:
-                        children = proc.children(recursive=True)  # Get child processes
+                        children = proc.children(recursive=True)
                         for child in children:
                             try:
-                                child.terminate()  # Terminate each child process
-                                child.wait(timeout=5)  # Wait for child to terminate
+                                child.terminate()
+                                child.wait(timeout=5)
                             except psutil.NoSuchProcess:
-                                print(f"Child process {child.pid} no longer exists.")
+                                pass
                             except Exception as e:
                                 print(f"Error terminating child process {child.pid}: {e}")
                     except psutil.NoSuchProcess:
-                        print(f"Parent process {proc.pid} no longer exists.")
+                        pass
                     except Exception as e:
                         print(f"Error retrieving child processes: {e}")
                     break
             except psutil.NoSuchProcess:
-                print(f"Process no longer exists: {proc.pid}.")
+                pass
             except Exception as e:
                 print(f"Error processing scheduler process {proc.pid}: {e}")
 

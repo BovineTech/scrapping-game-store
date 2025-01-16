@@ -306,6 +306,9 @@ def is_scheduler_running():
 # Routes
 @app.route('/scheduler/status', methods=['POST'])
 def check_scheduler_status():
+    auth_result = custom_token_verification()
+    if isinstance(auth_result, tuple):
+        return auth_result
     if is_scheduler_running():
         return jsonify({"running": True}), 200
     else:
@@ -313,7 +316,9 @@ def check_scheduler_status():
 
 @app.route('/scheduler/start', methods=['POST'])
 def start_scheduler():
-    custom_token_verification()
+    auth_result = custom_token_verification()
+    if isinstance(auth_result, tuple):
+        return auth_result
     if is_scheduler_running():
         return jsonify({"msg": "The scheduler is already running on the server."}), 400
     try:
@@ -325,7 +330,9 @@ def start_scheduler():
 
 @app.route('/scheduler/stop', methods=['POST'])
 def stop_scheduler():
-    custom_token_verification()
+    auth_result = custom_token_verification()
+    if isinstance(auth_result, tuple):
+        return auth_result
     if not is_scheduler_running():
         return jsonify({"msg": "Nothing works in server now."}), 400
     try:
@@ -369,7 +376,9 @@ def stop_scheduler():
 
 @app.route('/games/count', methods=['GET'])
 def get_game_count():
-    custom_token_verification()
+    auth_result = custom_token_verification()
+    if isinstance(auth_result, tuple):
+        return auth_result
     service = request.args.get('service')
     if service == "steam":
         collection = mongo.db.steam_games
@@ -387,7 +396,9 @@ def get_game_count():
 
 @app.route('/logs', methods=['GET'])
 def fetch_logs():
-    custom_token_verification()
+    auth_result = custom_token_verification()
+    if isinstance(auth_result, tuple):
+        return auth_result
     try:
         return send_file("scraper.log", mimetype="text/plain")
     except Exception as e:
@@ -406,7 +417,9 @@ def login():
     
 @app.route('/games', methods=['GET'])
 def get_games():
-    custom_token_verification()
+    auth_result = custom_token_verification()
+    if isinstance(auth_result, tuple):
+        return auth_result
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 10))
     service = request.args.get('service')

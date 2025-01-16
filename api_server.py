@@ -356,16 +356,16 @@ def stop_scheduler():
                             except psutil.NoSuchProcess:
                                 pass
                             except Exception as e:
-                                print(f"Error terminating child process {child.pid}: {e}")
+                                print(f"API_server/Stop scheduler : Error terminating child process {child.pid}: {e}")
                     except psutil.NoSuchProcess:
                         pass
                     except Exception as e:
-                        print(f"Error retrieving child processes: {e}")
+                        print(f"API_server/Stop scheduler : Error retrieving child processes: {e}")
                     break
             except psutil.NoSuchProcess:
                 pass
             except Exception as e:
-                print(f"Error processing scheduler process {proc.pid}: {e}")
+                print(f"API_server/Stop scheduler : Error processing scheduler process {proc.pid}: {e}")
 
         if scheduler_stopped:
             return jsonify({"msg": "Scheduler and its subprocesses stopped"}), 200

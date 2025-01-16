@@ -25,7 +25,8 @@ def fetch_playstation_games(total_pages):
         all_links = [a['href'] for a in soup.find_all('a', href=True)]
         filtered_links = [link for link in all_links if re.match(r"/en-us/concept/\d+", link)]
         total_links += filtered_links
-        print("-"*30, i + 1, " page filtered from Playstation", "-"*30, "\n")
+        if((i+1) % 50 == 0):
+            print(f"{i+1} pages filtered from Playstation")
     return total_links
 
 def process_playstation_game(game):
@@ -85,14 +86,14 @@ def main():
     while index < len(games):
         game_data = process_playstation_game(games[index])
         if "error" in game_data:
-            print("-"*40, "plz check the network", "-"*40, "\n", game_data["error"])
-            time.sleep(10)
+            print("! playstation.py : exception occur : plz check the network", game_data["error"])
+            time.sleep(120)
             continue
         else:
             save_to_mongo(db, "playstation_games", game_data)
-            log_info(f"Saved Playstation game {index+1}: {game_data['title']}")
-            print(f"-------Saved PlayStation game: {game_data['title']}.--------")
-        index += 1        
+            index += 1
+            if(index % 50 == 0):
+                log_info(f"Saved Playstation {index} games")
 
 if __name__ == "__main__":
     main()

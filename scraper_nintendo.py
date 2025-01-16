@@ -13,8 +13,8 @@ def fetch_games():
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        print(f"Error fetching games: {e}")
-        print("-----too many requests or offline state------")
+        print(f"Nintendo : Error fetching games: {e}")
+        time.sleep(120)
         return []
 
 def process_nintendo_game(browser, game):
@@ -112,8 +112,9 @@ def process_nintendo_game(browser, game):
                 }
             return game_data
         except Exception as e:
-            print(f"Error processing game: {e}")
-            print("-"*30, "! exception occur : plz check the network or part!", "-"*30)
+            print(f"Nintendo : Error processing game: {e}")
+            print("! exception occur : plz check the network or part!")
+            time.sleep(120)
 
 def main():
     log_info("Waiting for fetching Nintendo games...")
@@ -125,14 +126,14 @@ def main():
     while index < len(games):
         game_data = process_nintendo_game(browser, games[index])
         if "error" in game_data:
-            print("-"*40, "plz check the network or part", "-"*40, "\n", game_data["error"])
-            time.sleep(10)
+            print("plz check the network or part", game_data["error"])
+            time.sleep(120)
             continue
         else:
             save_to_mongo(db, "nintendo_games", game_data)
-            log_info(f"Saved Nintendo game {index+1}: {game_data['title']}")
-            print(f"--------Saved Nintendo game: {game_data['title']}--------")
-        index += 1
+            index += 1
+            if(index % 50 == 0):
+                log_info(f"Saved Nintendo {index} games")
 
     browser.quit()
 

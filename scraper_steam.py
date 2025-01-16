@@ -61,20 +61,21 @@ def main():
     db = get_mongo_db()
 
     index = 0
+    count = 0   # count of games stored in db
     while index < len(apps):
         app = apps[index]
         proxy = my_proxies[index % 10]
         game_data = fetch_game_details(app["appid"], proxy)
         if "error" in game_data:
             if "429" in game_data['error']:
-                # time.sleep(60)
-                print(app['appid'], f"------too many requests : {proxy} : waiting for server")
+                # print(app['appid'], f"------too many requests : {proxy} : use another proxy")
                 continue
-            else: print("Steam : ", app['appid'], "------",game_data["error"])
+            # else: print("Steam : ", app['appid'], "------",game_data["error"])
         else:
             save_to_mongo(db, "steam_games", game_data)
-            log_info(f"Saved Steam game {index+1}: {game_data['title']}")
-            print(f"Saved Steam game: {game_data['title']}")
+            count += 1
+            if(count % 50 == 0):
+                log_info(f"Saved Steam {index} games")
         index += 1
 
 if __name__ == "__main__":

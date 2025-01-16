@@ -6,10 +6,10 @@ from concurrent.futures import ThreadPoolExecutor
 from utils import log_info, log_error
 
 SCRAPER_INTERVALS = {
-    "scraper_steam.py": 10,  # Run every 10 seconds
-    "scraper_nintendo.py": 15,  # Run every 15 seconds
-    "scraper_playstation.py": 20,  # Run every 20 seconds
-    "scraper_xbox.py": 25,  # Run every 25 seconds
+    "scraper_steam.py": 10,
+    "scraper_nintendo.py": 10,
+    "scraper_playstation.py": 10,
+    "scraper_xbox.py": 10,
 }
 
 def run_scraper(scraper, interval):
@@ -38,7 +38,8 @@ def run_scraper(scraper, interval):
             log_info(f"========== Finished {scraper} and Updated db. ==========")
 
         except Exception as e:
-            log_error(f"Error running {scraper}: {e}")
+            print(f"Scheduler.py : Error running {scraper}: {e}")
+            # log_error(f"Scheduler : Error running {scraper}: {e}")
             time.sleep(300)
 
         # Wait for the interval before restarting the scraper

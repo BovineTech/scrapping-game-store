@@ -1,6 +1,6 @@
-# xbox_scraper.py
 from bs4 import BeautifulSoup
 from utils import get_mongo_db, save_to_mongo, get_selenium_browser, log_info, click_loadmore_btn, regions_xbox
+import time
 
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
 
@@ -87,11 +87,13 @@ def main():
         try:
             game_data = process_xbox_game(browser, games[index])
             save_to_mongo(db, "xbox_games", game_data)
-            log_info(f"Saved Xbox game {index+1}: {game_data['title']}")
-            print(f"-------Saved Xbox game: {game_data['title']}.---------")
             index += 1
-        except Exception:
-            print("-"*30, "! exception occur : plz check the network !", "-"*30)
+            if(index % 50 == 0):
+                log_info(f"Saved Xbox {index} games")
+        except Exception as e:
+            print(f"Error processing game: {e}")
+            print("! xbox.py : exception occur : plz check the network !")
+            time.sleep(120)
     browser.quit()
 
 if __name__ == "__main__":

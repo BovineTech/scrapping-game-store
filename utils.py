@@ -1,5 +1,6 @@
 import os
 import logging
+import time
 from bs4 import BeautifulSoup
 from pymongo import MongoClient
 from dotenv import load_dotenv
@@ -170,12 +171,14 @@ def click_loadmore_btn(browser, btn_dom):
             return browser
         except Exception as e:
             print(f"Error processing game: {e}")
-            print("-"*30, "! exception occur : plz check the network !", "-"*30)
+            print("-"*30, "! load more : exception occur : plz check the network !", "-"*30)
+            time.sleep(120)
             continue
         btn = browser.find_element(By.XPATH, btn_dom)
         btn.click()
         count += 1
-        print("-"*20, "Load more button", count, " times clikced in Xbox","-"*20)
+        if(count % 50 == 0):
+            print("-"*20, "Load more button", count, " times clikced in Xbox","-"*20)
 
 def search_game(browser, search_dom, result_dom, title):
     try:

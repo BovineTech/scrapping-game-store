@@ -39,6 +39,7 @@ def run_scraper(scraper, interval):
 
         except Exception as e:
             log_error(f"Error running {scraper}: {e}")
+            time.sleep(300)
 
         # Wait for the interval before restarting the scraper
         time.sleep(interval)

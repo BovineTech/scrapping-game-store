@@ -86,7 +86,7 @@ def process_games_range(start_index, end_index, games):
         try:
             game_data = process_playstation_game(games[index])
             if "error" in game_data:
-                print("! playstation.py : exception occur : plz check the network", game_data["error"])
+                print(f"! {start_index} playstation.py : exception occur : plz check the network", game_data["error"])
                 time.sleep(120)
                 continue
             else:

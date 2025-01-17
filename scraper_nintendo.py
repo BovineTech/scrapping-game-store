@@ -1,6 +1,7 @@
 import requests
 import time
 import re
+import multiprocessing
 from bs4 import BeautifulSoup
 from utils import log_info, get_mongo_db, save_to_mongo, get_selenium_browser, search_game, regions_nintendo
 
@@ -116,26 +117,76 @@ def process_nintendo_game(browser, game):
             print("! exception occur : plz check the network or part!")
             time.sleep(120)
 
-def main():
-    log_info("Waiting for fetching Nintendo games...")
-    games = fetch_games()
+def process_games_range(start_index, end_index, games):
+    log_info(f"Processing games from index {start_index} to {end_index}")
     db = get_mongo_db()
     browser = get_selenium_browser()
 
-    index = 0
-    while index < len(games):
-        game_data = process_nintendo_game(browser, games[index])
-        if "error" in game_data:
-            print("plz check the network or part", game_data["error"])
-            time.sleep(120)
-            continue
-        else:
-            save_to_mongo(db, "nintendo_games", game_data)
-            index += 1
-            if(index % 50 == 0):
-                log_info(f"Saved Nintendo {index} games")
+    for index in range(start_index, end_index):
+        try:
+            game_data = process_nintendo_game(browser, games[index])
+            if "error" in game_data:
+                print("plz check the network or part", game_data["error"])
+                time.sleep(120)
+                continue
+            else:
+                save_to_mongo(db, "nintendo_games", game_data)
+                if (index - start_index + 1) % 50 == 0:
+                    log_info(f"Saved Nintendo {index - start_index + 1} games in this process")
+        except Exception as e:
+            log_info(f"Error processing game at index {index}: {str(e)}")
 
     browser.quit()
+
+def main():
+    log_info("Waiting for fetching Nintendo games...")
+    games = fetch_games()
+
+    total_games = len(games)
+    if total_games == 0:
+        log_info("No games found to process.")
+        return
+
+    # Calculate the ranges for each subprocess
+    ranges = [
+        (0, total_games // 8 - 1),
+        (total_games // 8, 2 * total_games // 3 - 1),
+        (2 * total_games // 8, total_games - 1)
+    ]
+
+    # Create and start subprocesses
+    processes = []
+    for start, end in ranges:
+        process = multiprocessing.Process(target=process_games_range, args=(start, end, games))
+        processes.append(process)
+        process.start()
+
+    # Wait for all processes to complete
+    for process in processes:
+        process.join()
+
+    log_info("All processes completed.")
+
+# def main():
+#     log_info("Waiting for fetching Nintendo games...")
+#     games = fetch_games()
+#     db = get_mongo_db()
+#     browser = get_selenium_browser()
+
+#     index = 0
+#     while index < len(games):
+#         game_data = process_nintendo_game(browser, games[index])
+#         if "error" in game_data:
+#             print("plz check the network or part", game_data["error"])
+#             time.sleep(120)
+#             continue
+#         else:
+#             save_to_mongo(db, "nintendo_games", game_data)
+#             index += 1
+#             if(index % 50 == 0):
+#                 log_info(f"Saved Nintendo {index} games")
+
+#     browser.quit()
 
 if __name__ == "__main__":
     main()

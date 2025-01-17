@@ -96,7 +96,7 @@ def process_games_range(start_index, end_index, games):
         except Exception as e:
             log_info(f"Error processing game at index {index}: {str(e)}")
 
-def main(n_processes=8):
+def main():
     log_info("Waiting for fetching Playstation games...")
     total_pages = get_total_pages()
     games = fetch_playstation_games(total_pages)

@@ -7,7 +7,7 @@ from utils import log_info, save_to_mongo, get_mongo_db, regions_playstation
 
 
 PLAYSTATION_URL = "https://store.playstation.com/en-us/pages/browse/1"
-n_processes = 20
+n_processes = 12
 
 def get_total_pages():
     response = requests.get(PLAYSTATION_URL)
@@ -109,7 +109,6 @@ def process_playstation_game(game):
         return {"error": f"Network error: {req_err}"}
     except Exception as e:
         return {"error": f"Error fetching game details: {e}"}
-
 
 def process_games_range(start_index, end_index, games):
     log_info(f"Processing games from index {start_index} to {end_index}")

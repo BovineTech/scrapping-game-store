@@ -10,16 +10,18 @@ PLAYSTATION_URL = "https://store.playstation.com/en-us/pages/browse/1"
 n_processes = 8
 
 def get_total_pages():
-    try:
-        response = requests.get(PLAYSTATION_URL)
-        soup = BeautifulSoup(response.content, "html.parser")
-        ol_tag = soup.find('ol', class_="psw-l-space-x-1 psw-l-line-center psw-list-style-none")
-        li_tags = ol_tag.find_all('li')
-        li_tag = li_tags[-1]
-        total_pages = int(li_tag.find('span', class_="psw-fill-x").text.strip())
-        return total_pages
-    except Exception as e:
-        return {"error": f"Error fetching game details: {e}"}
+    while True:
+        try:
+            response = requests.get(PLAYSTATION_URL)
+            soup = BeautifulSoup(response.content, "html.parser")
+            ol_tag = soup.find('ol', class_="psw-l-space-x-1 psw-l-line-center psw-list-style-none")
+            li_tags = ol_tag.find_all('li')
+            li_tag = li_tags[-1]
+            total_pages = int(li_tag.find('span', class_="psw-fill-x").text.strip())
+            return total_pages
+        except Exception as e:
+            print(f"Error fetching game details: {e}")
+            time.sleep(120)
 
 def fetch_page_links(start_page, end_page):
     links = []
@@ -52,84 +54,78 @@ def fetch_playstation_games(total_pages):
     return total_links
 
 def process_playstation_game(game):
-    try:
-        response = requests.get("https://store.playstation.com" + game)
-        response.raise_for_status()  # Raise an error if the response status is not 200
-        soup = BeautifulSoup(response.content, "html.parser")
+    while True:
+        try:
+            response = requests.get("https://store.playstation.com" + game)
+            response.raise_for_status()  # Raise an error if the response status is not 200
+            soup = BeautifulSoup(response.content, "html.parser")
 
-        # Helper function to safely extract text
-        def get_text_safe(tag):
-            return tag.text.strip() if tag else "N/A"
+            # Helper function to safely extract text
+            def get_text_safe(tag):
+                return tag.text.strip() if tag else "N/A"
 
-        # Extract game details with error handling
-        title = get_text_safe(soup.find(attrs={"data-qa": "mfe-game-title#name"}))
-        short_description = get_text_safe(soup.find(attrs={"class": "psw-l-switcher psw-with-dividers"}))
-        full_description = get_text_safe(soup.find(attrs={"data-qa": "pdp#overview"}))
+            # Extract game details with error handling
+            title = get_text_safe(soup.find(attrs={"data-qa": "mfe-game-title#name"}))
+            short_description = get_text_safe(soup.find(attrs={"class": "psw-l-switcher psw-with-dividers"}))
+            full_description = get_text_safe(soup.find(attrs={"data-qa": "pdp#overview"}))
 
-        header_img_tag = soup.find('img', {'data-qa': 'gameBackgroundImage#heroImage#preview'})
-        header_image = header_img_tag['src'] if header_img_tag else "N/A"
+            header_img_tag = soup.find('img', {'data-qa': 'gameBackgroundImage#heroImage#preview'})
+            header_image = header_img_tag['src'] if header_img_tag else "N/A"
 
-        tmp = soup.find(attrs={"data-qa": "mfe-star-rating#overall-rating#average-rating"})
-        rating = get_text_safe(tmp)
+            tmp = soup.find(attrs={"data-qa": "mfe-star-rating#overall-rating#average-rating"})
+            rating = get_text_safe(tmp)
 
-        publisher = get_text_safe(soup.find(attrs={'data-qa': "gameInfo#releaseInformation#publisher-value"}))
-        platforms = get_text_safe(soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#platform-value'}))
-        release_date = get_text_safe(soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#releaseDate-value'}))
+            publisher = get_text_safe(soup.find(attrs={'data-qa': "gameInfo#releaseInformation#publisher-value"}))
+            platforms = get_text_safe(soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#platform-value'}))
+            release_date = get_text_safe(soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#releaseDate-value'}))
 
-        categorie_tag = soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#genre-value'})
-        categories = (
-            [span.text.strip() for span in categorie_tag.find_all('span')] if categorie_tag else []
-        )
+            categorie_tag = soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#genre-value'})
+            categories = (
+                [span.text.strip() for span in categorie_tag.find_all('span')] if categorie_tag else []
+            )
 
-        # Extract game price
-        prices = {}
-        main_price_tag = soup.find(attrs={"data-qa": "mfeCtaMain#offer0#finalPrice"})
-        prices["us"] = get_text_safe(main_price_tag)
+            # Extract game price
+            prices = {}
+            main_price_tag = soup.find(attrs={"data-qa": "mfeCtaMain#offer0#finalPrice"})
+            prices["us"] = get_text_safe(main_price_tag)
 
-        for region in regions_playstation:
-            region_response = requests.get("https://store.playstation.com" + game.replace("en-us", region))
-            region_response.raise_for_status()
-            region_soup = BeautifulSoup(region_response.content, "html.parser")
-            region_price_tag = region_soup.find(attrs={"data-qa": "mfeCtaMain#offer0#finalPrice"})
-            prices[region.split('-')[1]] = get_text_safe(region_price_tag)
+            for region in regions_playstation:
+                region_response = requests.get("https://store.playstation.com" + game.replace("en-us", region))
+                region_response.raise_for_status()
+                region_soup = BeautifulSoup(region_response.content, "html.parser")
+                region_price_tag = region_soup.find(attrs={"data-qa": "mfeCtaMain#offer0#finalPrice"})
+                prices[region.split('-')[1]] = get_text_safe(region_price_tag)
 
-        game_data = {
-            "title": title,
-            "categories": categories,
-            "short_description": short_description,
-            "full_description": full_description,
-            "screenshots": [],
-            "header_image": header_image,
-            "rating": rating,
-            "publisher": publisher,
-            "platforms": platforms,
-            "release_date": release_date,
-            "prices": prices,
-        }
-        return game_data
-
-    except requests.exceptions.RequestException as req_err:
-        return {"error": f"Network error: {req_err}"}
-    except Exception as e:
-        return {"error": f"Error fetching game details: {e}"}
+            game_data = {
+                "title": title,
+                "categories": categories,
+                "short_description": short_description,
+                "full_description": full_description,
+                "screenshots": [],
+                "header_image": header_image,
+                "rating": rating,
+                "publisher": publisher,
+                "platforms": platforms,
+                "release_date": release_date,
+                "prices": prices,
+            }
+            return game_data
+        except requests.exceptions.RequestException as req_err:
+            print(f"Network error: {req_err}")
+            time.sleep(120)
+        except Exception as e:
+            print(f"Error fetching game details: {e}")
+            time.sleep(120)
 
 def process_games_range(start_index, end_index, games):
     log_info(f"Processing games from index {start_index} to {end_index}")
     db = get_mongo_db()
 
     for index in range(start_index, end_index):
-        try:
-            game_data = process_playstation_game(games[index])
-            if "error" in game_data:
-                print(f"! {start_index} playstation.py : exception occur : plz check the network", game_data["error"])
-                time.sleep(120)
-                continue
-            else:
-                save_to_mongo(db, "playstation_games", game_data)
-                if (index - start_index + 1) % 50 == 0:
-                    log_info(f"Saved Playstation {index - start_index + 1} games in this process")
-        except Exception as e:
-            log_info(f"Error processing game at index {index}: {str(e)}")
+        game_data = process_playstation_game(games[index])
+        save_to_mongo(db, "playstation_games", game_data)
+        if (index - start_index + 1) % 50 == 0:
+            log_info(f"Saved Playstation {index - start_index + 1} games in this process")
 
 def main():
     log_info("Waiting for fetching Playstation games...")

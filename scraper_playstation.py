@@ -1,11 +1,13 @@
 from bs4 import BeautifulSoup
 import requests
-import time
+import multiprocessing
 import re
+import time
 from utils import log_info, save_to_mongo, get_mongo_db, regions_playstation
 
 
 PLAYSTATION_URL = "https://store.playstation.com/en-us/pages/browse/1"
+n_processes = 16
 
 def get_total_pages():
     response = requests.get(PLAYSTATION_URL)
@@ -76,24 +78,72 @@ def process_playstation_game(game):
     except Exception as e:
         return {"error": f"Error fetching game details: {e}"}
 
-def main():
+def process_games_range(start_index, end_index, games):
+    log_info(f"Processing games from index {start_index} to {end_index}")
+    db = get_mongo_db()
+
+    for index in range(start_index, end_index):
+        try:
+            game_data = process_playstation_game(games[index])
+            if "error" in game_data:
+                print("! playstation.py : exception occur : plz check the network", game_data["error"])
+                time.sleep(120)
+                continue
+            else:
+                save_to_mongo(db, "playstation_games", game_data)
+                if (index - start_index + 1) % 50 == 0:
+                    log_info(f"Saved Playstation {index - start_index + 1} games in this process")
+        except Exception as e:
+            log_info(f"Error processing game at index {index}: {str(e)}")
+
+def main(n_processes=8):
     log_info("Waiting for fetching Playstation games...")
     total_pages = get_total_pages()
     games = fetch_playstation_games(total_pages)
-    db = get_mongo_db()
 
-    index = 0
-    while index < len(games):
-        game_data = process_playstation_game(games[index])
-        if "error" in game_data:
-            print("! playstation.py : exception occur : plz check the network", game_data["error"])
-            time.sleep(120)
-            continue
-        else:
-            save_to_mongo(db, "playstation_games", game_data)
-            index += 1
-            if(index % 50 == 0):
-                log_info(f"Saved Playstation {index} games")
+    total_games = len(games)
+    if total_games == 0:
+        log_info("No games found to process.")
+        return
+
+    # Calculate the ranges for each subprocess
+    chunk_size = (total_games + n_processes - 1) // n_processes  # Ceiling division to cover all games
+    ranges = [
+        (i * chunk_size, min((i + 1) * chunk_size - 1, total_games))
+        for i in range(n_processes)
+    ]
+
+    # Create and start subprocesses
+    processes = []
+    for start, end in ranges:
+        process = multiprocessing.Process(target=process_games_range, args=(start, end, games))
+        processes.append(process)
+        process.start()
+
+    # Wait for all processes to complete
+    for process in processes:
+        process.join()
+
+    log_info("All processes completed.")
+
+# def main():
+#     log_info("Waiting for fetching Playstation games...")
+#     total_pages = get_total_pages()
+#     games = fetch_playstation_games(total_pages)
+#     db = get_mongo_db()
+
+#     index = 0
+#     while index < len(games):
+#         game_data = process_playstation_game(games[index])
+#         if "error" in game_data:
+#             print("! playstation.py : exception occur : plz check the network", game_data["error"])
+#             time.sleep(120)
+#             continue
+#         else:
+#             save_to_mongo(db, "playstation_games", game_data)
+#             index += 1
+#             if(index % 50 == 0):
+#                 log_info(f"Saved Playstation {index} games")
 
 if __name__ == "__main__":
     main()

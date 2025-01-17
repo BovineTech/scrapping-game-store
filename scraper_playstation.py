@@ -10,13 +10,16 @@ PLAYSTATION_URL = "https://store.playstation.com/en-us/pages/browse/1"
 n_processes = 8
 
 def get_total_pages():
-    response = requests.get(PLAYSTATION_URL)
-    soup = BeautifulSoup(response.content, "html.parser")
-    ol_tag = soup.find('ol', class_="psw-l-space-x-1 psw-l-line-center psw-list-style-none")
-    li_tags = ol_tag.find_all('li')
-    li_tag = li_tags[-1]
-    total_pages = int(li_tag.find('span', class_="psw-fill-x").text.strip())
-    return total_pages
+    try:
+        response = requests.get(PLAYSTATION_URL)
+        soup = BeautifulSoup(response.content, "html.parser")
+        ol_tag = soup.find('ol', class_="psw-l-space-x-1 psw-l-line-center psw-list-style-none")
+        li_tags = ol_tag.find_all('li')
+        li_tag = li_tags[-1]
+        total_pages = int(li_tag.find('span', class_="psw-fill-x").text.strip())
+        return total_pages
+    except Exception as e:
+        return {"error": f"Error fetching game details: {e}"}
 
 def fetch_page_links(start_page, end_page):
     links = []

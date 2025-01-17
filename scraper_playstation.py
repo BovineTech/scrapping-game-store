@@ -18,17 +18,34 @@ def get_total_pages():
     total_pages = int(li_tag.find('span', class_="psw-fill-x").text.strip())
     return total_pages
 
-def fetch_playstation_games(total_pages):
-    total_links = []
-    for i in range(total_pages):
+def fetch_page_links(start_page, end_page):
+    links = []
+    for i in range(start_page, end_page):
         url = f"https://store.playstation.com/en-us/pages/browse/{i+1}"
         response = requests.get(url)
         soup = BeautifulSoup(response.content, "html.parser")
         all_links = [a['href'] for a in soup.find_all('a', href=True)]
         filtered_links = [link for link in all_links if re.match(r"/en-us/concept/\d+", link)]
-        total_links += filtered_links
-        if((i+1) % 50 == 0):
-            print(f"{i+1} pages filtered from Playstation")
+        links += filtered_links
+        if ((i+1) % 50 == 0):
+            print(f"{i+1} pages filtered from Playstation in process {multiprocessing.current_process().name}")
+    return links
+
+def fetch_playstation_games(total_pages, n_processes=8):
+    # Calculate page ranges for each subprocess
+    chunk_size = (total_pages + n_processes - 1) // n_processes  # Ceiling division
+    ranges = [
+        (i * chunk_size, min((i + 1) * chunk_size, total_pages))
+        for i in range(n_processes)
+    ]
+
+    # Function to fetch links in parallel and collect results
+    with multiprocessing.Pool(processes=n_processes) as pool:
+        results = pool.starmap(fetch_page_links, ranges)
+
+    # Flatten the results
+    total_links = [link for sublist in results for link in sublist]
+
     return total_links
 
 def process_playstation_game(game):

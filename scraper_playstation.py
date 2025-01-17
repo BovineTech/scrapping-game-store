@@ -31,11 +31,11 @@ def fetch_page_links(start_page, end_page):
             print(f"{i+1} pages filtered from Playstation in process {multiprocessing.current_process().name}")
     return links
 
-def fetch_playstation_games(total_pages, n_processes=8):
+def fetch_playstation_games(total_pages):
     # Calculate page ranges for each subprocess
     chunk_size = (total_pages + n_processes - 1) // n_processes  # Ceiling division
     ranges = [
-        (i * chunk_size, min((i + 1) * chunk_size, total_pages))
+        (i * chunk_size, min((i + 1) * chunk_size - 1, total_pages))
         for i in range(n_processes)
     ]
 

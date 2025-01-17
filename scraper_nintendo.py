@@ -7,6 +7,7 @@ from utils import log_info, get_mongo_db, save_to_mongo, get_selenium_browser, s
 
 API_URL = "https://api.sampleapis.com/switch/games" # API endpoint
 JAPAN_URL = "https://www.nintendo.com/jp/software/switch/index.html?sftab=all"
+n_processes = 8
 
 def fetch_games():
     try:
@@ -146,12 +147,12 @@ def main():
     if total_games == 0:
         log_info("No games found to process.")
         return
-
+    
     # Calculate the ranges for each subprocess
+    chunk_size = (total_games + n_processes - 1) // n_processes  # Ceiling division to cover all games
     ranges = [
-        (0, total_games // 8 - 1),
-        (total_games // 8, 2 * total_games // 3 - 1),
-        (2 * total_games // 8, total_games - 1)
+        (i * chunk_size, min((i + 1) * chunk_size, total_games))
+        for i in range(n_processes)
     ]
 
     # Create and start subprocesses

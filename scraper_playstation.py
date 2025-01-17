@@ -7,7 +7,7 @@ from utils import log_info, save_to_mongo, get_mongo_db, regions_playstation
 
 
 PLAYSTATION_URL = "https://store.playstation.com/en-us/pages/browse/1"
-n_processes = 16
+n_processes = 8
 
 def get_total_pages():
     response = requests.get(PLAYSTATION_URL)
@@ -32,51 +32,67 @@ def fetch_playstation_games(total_pages):
     return total_links
 
 def process_playstation_game(game):
-    response = requests.get("https://store.playstation.com" + game)
-    soup = BeautifulSoup(response.content, "html.parser")
-    
     try:
-        # Game title    
-        title = soup.find(attrs={"data-qa": "mfe-game-title#name"}).text
-        short_description = soup.find(attrs={"class": "psw-l-switcher psw-with-dividers"}).text
-        full_description = soup.find(attrs={"data-qa": "pdp#overview"}).text
+        response = requests.get("https://store.playstation.com" + game)
+        response.raise_for_status()  # Raise an error if the response status is not 200
+        soup = BeautifulSoup(response.content, "html.parser")
+
+        # Helper function to safely extract text
+        def get_text_safe(tag):
+            return tag.text.strip() if tag else "N/A"
+
+        # Extract game details with error handling
+        title = get_text_safe(soup.find(attrs={"data-qa": "mfe-game-title#name"}))
+        short_description = get_text_safe(soup.find(attrs={"class": "psw-l-switcher psw-with-dividers"}))
+        full_description = get_text_safe(soup.find(attrs={"data-qa": "pdp#overview"}))
+
         header_img_tag = soup.find('img', {'data-qa': 'gameBackgroundImage#heroImage#preview'})
-        header_image = header_img_tag['src']
+        header_image = header_img_tag['src'] if header_img_tag else "N/A"
 
         tmp = soup.find(attrs={"data-qa": "mfe-star-rating#overall-rating#average-rating"})
-        rating = tmp.text if tmp else "N/A"
+        rating = get_text_safe(tmp)
 
-        publisher = soup.find(attrs={'data-qa': "gameInfo#releaseInformation#publisher-value"}).text
-        platforms = soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#platform-value'}).text
-        release_date = soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#releaseDate-value'}).text
+        publisher = get_text_safe(soup.find(attrs={'data-qa': "gameInfo#releaseInformation#publisher-value"}))
+        platforms = get_text_safe(soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#platform-value'}))
+        release_date = get_text_safe(soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#releaseDate-value'}))
+
         categorie_tag = soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#genre-value'})
-        categories = categorie_tag.find('span').text.strip().split(",")    
-        
-        # Game Price
+        categories = (
+            [span.text.strip() for span in categorie_tag.find_all('span')] if categorie_tag else []
+        )
+
+        # Extract game price
         prices = {}
-        prices["us"] = soup.find(attrs={"data-qa": "mfeCtaMain#offer0#finalPrice"}).text.strip()
+        main_price_tag = soup.find(attrs={"data-qa": "mfeCtaMain#offer0#finalPrice"})
+        prices["us"] = get_text_safe(main_price_tag)
+
         for region in regions_playstation:
-            response = requests.get("https://store.playstation.com" + game.replace("en-us", region))
-            soup = BeautifulSoup(response.content, "html.parser")
-            region_price = soup.find(attrs={"data-qa": "mfeCtaMain#offer0#finalPrice"})
-            prices[region.split('-')[1]] = region_price.text.strip() if region_price else "N/A"
+            region_response = requests.get("https://store.playstation.com" + game.replace("en-us", region))
+            region_response.raise_for_status()
+            region_soup = BeautifulSoup(region_response.content, "html.parser")
+            region_price_tag = region_soup.find(attrs={"data-qa": "mfeCtaMain#offer0#finalPrice"})
+            prices[region.split('-')[1]] = get_text_safe(region_price_tag)
 
         game_data = {
-                "title": title,                          
-                "categories": categories,
-                "short_description": short_description,
-                "full_description": full_description,
-                "screenshots": [],
-                "header_image": header_image,
-                "rating": rating,
-                "publisher": publisher,
-                "platforms": platforms,
-                "release_date": release_date,
-                "prices": prices
-            }
+            "title": title,
+            "categories": categories,
+            "short_description": short_description,
+            "full_description": full_description,
+            "screenshots": [],
+            "header_image": header_image,
+            "rating": rating,
+            "publisher": publisher,
+            "platforms": platforms,
+            "release_date": release_date,
+            "prices": prices,
+        }
         return game_data
+
+    except requests.exceptions.RequestException as req_err:
+        return {"error": f"Network error: {req_err}"}
     except Exception as e:
         return {"error": f"Error fetching game details: {e}"}
+
 
 def process_games_range(start_index, end_index, games):
     log_info(f"Processing games from index {start_index} to {end_index}")
@@ -125,25 +141,6 @@ def main():
         process.join()
 
     log_info("All processes completed.")
-
-# def main():
-#     log_info("Waiting for fetching Playstation games...")
-#     total_pages = get_total_pages()
-#     games = fetch_playstation_games(total_pages)
-#     db = get_mongo_db()
-
-#     index = 0
-#     while index < len(games):
-#         game_data = process_playstation_game(games[index])
-#         if "error" in game_data:
-#             print("! playstation.py : exception occur : plz check the network", game_data["error"])
-#             time.sleep(120)
-#             continue
-#         else:
-#             save_to_mongo(db, "playstation_games", game_data)
-#             index += 1
-#             if(index % 50 == 0):
-#                 log_info(f"Saved Playstation {index} games")
 
 if __name__ == "__main__":
     main()

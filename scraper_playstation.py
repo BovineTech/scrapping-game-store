@@ -7,7 +7,7 @@ from utils import log_info, save_to_mongo, get_mongo_db, regions_playstation
 
 
 PLAYSTATION_URL = "https://store.playstation.com/en-us/pages/browse/1"
-n_processes = 12
+n_processes = 8
 
 def get_total_pages():
     response = requests.get(PLAYSTATION_URL)

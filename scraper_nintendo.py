@@ -4,10 +4,14 @@ import re
 import multiprocessing
 from bs4 import BeautifulSoup
 from utils import log_info, get_mongo_db, save_to_mongo, get_selenium_browser, search_game, regions_nintendo
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+n_processes=os.getenv("n_processes")
 
 API_URL = "https://api.sampleapis.com/switch/games" # API endpoint
 JAPAN_URL = "https://www.nintendo.com/jp/software/switch/index.html?sftab=all"
-n_processes = 8
 
 def fetch_games():
     try:

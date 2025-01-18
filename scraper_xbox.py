@@ -2,9 +2,12 @@ from bs4 import BeautifulSoup
 from utils import get_mongo_db, save_to_mongo, get_selenium_browser, log_info, click_loadmore_btn, regions_xbox
 import time
 import multiprocessing
+import os
+from dotenv import load_dotenv
 
+load_dotenv()
+n_processes=os.getenv("n_processes")
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
-n_processes=8
 
 def fetch_xbox_games(browser):
     browser =  click_loadmore_btn(browser, '//button[contains(@aria-label, "Load more")]')

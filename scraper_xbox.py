@@ -6,7 +6,7 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-n_processes = int(os.getenv("n_processes", 8))  # Default to 4 if not set
+n_processes = int(os.getenv("n_processes", 8))  # Default to 8 if not set
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
 
 def fetch_xbox_games(browser):
@@ -14,8 +14,9 @@ def fetch_xbox_games(browser):
     soup = BeautifulSoup(browser.page_source, "html.parser")
     return soup.find_all('div', class_='ProductCard-module__cardWrapper___6Ls86 shadow')
 
-def process_xbox_game(browser, game):
+def process_xbox_game(game):
     try:
+        browser = get_selenium_browser()
         details_link = game.find('a', href=True)['href']
         browser.get(details_link)
         details_soup = BeautifulSoup(browser.page_source, 'html.parser')
@@ -38,11 +39,15 @@ def process_xbox_game(browser, game):
 
         prices = {"us": safe_find('span', "Price-module__boldText___1i2Li Price-module__moreText___sNMVr AcquisitionButtons-module__listedPrice___PS6Zm") or "BUNDLE NOT AVAILABLE"}
         for region in regions_xbox:
-            browser.get(details_link.replace("en-US", region))
-            price_soup = BeautifulSoup(browser.page_source, 'html.parser')
-            price = price_soup.find('span', class_="Price-module__boldText___1i2Li Price-module__moreText___sNMVr AcquisitionButtons-module__listedPrice___PS6Zm")
-            prices[region.split('-')[1]] = price.text.strip() if price else "BUNDLE NOT AVAILABLE"
+            try:
+                browser.get(details_link.replace("en-US", region))
+                price_soup = BeautifulSoup(browser.page_source, 'html.parser')
+                price = price_soup.find('span', class_="Price-module__boldText___1i2Li Price-module__moreText___sNMVr AcquisitionButtons-module__listedPrice___PS6Zm")
+                prices[region.split('-')[1]] = price.text.strip() if price else "BUNDLE NOT AVAILABLE"
+            except Exception as e:
+                print(f"Error fetching price for region {region}: {e}")
 
+        browser.quit()
         return {
             "title": title,
             "categories": categories,
@@ -61,21 +66,18 @@ def process_xbox_game(browser, game):
         return None
 
 def process_games_range(start_index, end_index, games):
-    browser = get_selenium_browser()
     db = get_mongo_db()
     log_info(f"Processing games from index {start_index} to {end_index}")
 
     for index in range(start_index, end_index):
         try:
-            game_data = process_xbox_game(browser, games[index])
+            game_data = process_xbox_game(games[index])
             if game_data:
                 save_to_mongo(db, "xbox_games", game_data)
                 if (index - start_index + 1) % 100 == 0:
                     log_info(f"Saved {start_index} ~ {index} Xbox games in this process")
         except Exception as e:
             print(f"Error processing Xbox game at index {index}: {e}")
-            time.sleep(60)
-    browser.quit()
 
 def main():
     browser = get_selenium_browser()
@@ -90,19 +92,10 @@ def main():
         return
 
     chunk_size = (total_games + n_processes - 1) // n_processes
-    ranges = [
-        (i * chunk_size, min((i + 1) * chunk_size, total_games))
-        for i in range(n_processes)
-    ]
+    ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_games)) for i in range(n_processes)]
 
-    processes = []
-    for start, end in ranges:
-        process = multiprocessing.Process(target=process_games_range, args=(start, end, games))
-        processes.append(process)
-        process.start()
-
-    for process in processes:
-        process.join()
+    with multiprocessing.Pool(processes=n_processes) as pool:
+        pool.starmap(process_games_range, [(start, end, games) for start, end in ranges])
 
     log_info("All processes completed.")
 

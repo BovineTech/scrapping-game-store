@@ -93,7 +93,7 @@ def main():
         except Exception as e:
             print(f"Error processing game: {e}")
             print("! xbox.py : exception occur : plz check the network !")
-            time.sleep(120)
+            time.sleep(60)
     browser.quit()
 
 if __name__ == "__main__":

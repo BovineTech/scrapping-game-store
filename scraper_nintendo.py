@@ -16,7 +16,7 @@ def fetch_games():
         return response.json()
     except Exception as e:
         print(f"Nintendo : Error fetching games: {e}")
-        time.sleep(120)
+        time.sleep(60)
         return []
 
 def process_nintendo_game(browser, game):
@@ -116,7 +116,7 @@ def process_nintendo_game(browser, game):
         except Exception as e:
             print(f"Nintendo : Error processing game: {e}")
             print("! exception occur : plz check the network or part!")
-            time.sleep(120)
+            time.sleep(60)
 
 def process_games_range(start_index, end_index, games):
     log_info(f"Processing games from index {start_index} to {end_index}")
@@ -128,7 +128,7 @@ def process_games_range(start_index, end_index, games):
             game_data = process_nintendo_game(browser, games[index])
             if "error" in game_data:
                 print("plz check the network or part", game_data["error"])
-                time.sleep(120)
+                time.sleep(60)
                 continue
             else:
                 save_to_mongo(db, "nintendo_games", game_data)
@@ -167,27 +167,6 @@ def main():
         process.join()
 
     log_info("All processes completed.")
-
-# def main():
-#     log_info("Waiting for fetching Nintendo games...")
-#     games = fetch_games()
-#     db = get_mongo_db()
-#     browser = get_selenium_browser()
-
-#     index = 0
-#     while index < len(games):
-#         game_data = process_nintendo_game(browser, games[index])
-#         if "error" in game_data:
-#             print("plz check the network or part", game_data["error"])
-#             time.sleep(120)
-#             continue
-#         else:
-#             save_to_mongo(db, "nintendo_games", game_data)
-#             index += 1
-#             if(index % 50 == 0):
-#                 log_info(f"Saved Nintendo {index} games")
-
-#     browser.quit()
 
 if __name__ == "__main__":
     main()

@@ -3,7 +3,7 @@ import os
 import platform
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
-from utils import log_info, log_error
+from utils import log_info
 
 SCRAPER_INTERVALS = {
     "scraper_steam.py": 10,
@@ -39,8 +39,7 @@ def run_scraper(scraper, interval):
 
         except Exception as e:
             print(f"Scheduler.py : Error running {scraper}: {e}")
-            # log_error(f"Scheduler : Error running {scraper}: {e}")
-            time.sleep(300)
+            time.sleep(60)
 
         # Wait for the interval before restarting the scraper
         time.sleep(interval)

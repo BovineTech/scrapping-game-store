@@ -21,7 +21,7 @@ def get_total_pages():
             return total_pages
         except Exception as e:
             print(f"Error fetching game details: {e}")
-            time.sleep(120)
+            time.sleep(60)
 
 def fetch_page_links(start_page, end_page):
     links = []
@@ -112,10 +112,10 @@ def process_playstation_game(game):
             return game_data
         except requests.exceptions.RequestException as req_err:
             print(f"Network error: {req_err}")
-            time.sleep(120)
+            time.sleep(60)
         except Exception as e:
             print(f"Error fetching game details: {e}")
-            time.sleep(120)
+            time.sleep(60)
 
 def process_games_range(start_index, end_index, games):
     log_info(f"Processing games from index {start_index} to {end_index}")
@@ -124,8 +124,8 @@ def process_games_range(start_index, end_index, games):
     for index in range(start_index, end_index):
         game_data = process_playstation_game(games[index])
         save_to_mongo(db, "playstation_games", game_data)
-        if (index - start_index + 1) % 50 == 0:
-            log_info(f"Saved Playstation {index - start_index + 1} games in this process")
+        if (index - start_index + 1) % 100 == 0:
+            log_info(f"Saved Playstation {start_index} ~ {index} games in this process")
 
 def main():
     log_info("Waiting for fetching Playstation games...")

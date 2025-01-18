@@ -6,6 +6,7 @@ import os
 from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
+from selenium.webdriver.chrome.options import Options
 import requests
 
 load_dotenv()
@@ -19,8 +20,21 @@ adapter = HTTPAdapter(pool_connections=100, pool_maxsize=100)
 session.mount('http://', adapter)
 session.mount('https://', adapter)
 
+def get_selenium_browser_with_retry(retries=3):
+    for _ in range(retries):
+        try:
+            options = Options()
+            options.add_argument("--headless")
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            return get_selenium_browser(options=options)
+        except Exception as e:
+            print(f"Failed to initialize browser: {e}")
+            time.sleep(5)
+    raise Exception("Could not initialize Selenium browser after retries")
+
 def fetch_xbox_games():
-    browser = get_selenium_browser()
+    browser = get_selenium_browser_with_retry()
     browser.get(XBOX_URL)
     browser = click_loadmore_btn(browser, '//button[contains(@aria-label, "Load more")]')
     soup = BeautifulSoup(browser.page_source, "html.parser")
@@ -36,9 +50,8 @@ def fetch_with_retry(url):
         print(f"Error fetching URL {url}: {e}")
         return None
 
-def process_xbox_game(game):
+def process_xbox_game(browser, game):
     try:
-        browser = get_selenium_browser()
         details_link = game.find('a', href=True)['href']
         browser.get(details_link)
         details_soup = BeautifulSoup(browser.page_source, 'html.parser')
@@ -68,12 +81,9 @@ def process_xbox_game(game):
                     price_soup = BeautifulSoup(response.content, 'html.parser')
                     price = price_soup.find('span', class_="Price-module__boldText___1i2Li Price-module__moreText___sNMVr AcquisitionButtons-module__listedPrice___PS6Zm")
                     prices[region.split('-')[1]] = price.text.strip() if price else "BUNDLE NOT AVAILABLE"
-                else:
-                    prices[region.split('-')[1]] = "Request Failed"
             except Exception as e:
                 print(f"Error fetching price for region {region}: {e}")
 
-        browser.quit()
         return {
             "title": title,
             "categories": categories,
@@ -93,17 +103,19 @@ def process_xbox_game(game):
 
 def process_games_range(start_index, end_index, games):
     db = get_mongo_db()
+    browser = get_selenium_browser_with_retry()
     log_info(f"Processing games from index {start_index} to {end_index}")
 
     for index in range(start_index, end_index):
         try:
-            game_data = process_xbox_game(games[index])
+            game_data = process_xbox_game(browser, games[index])
             if game_data:
                 save_to_mongo(db, "xbox_games", game_data)
                 if (index - start_index + 1) % 100 == 0:
-                    log_info(f"Saved {start_index} ~ {index} Xbox games in this process")
+                    log_info(f"Saved {index - start_index + 1} Xbox games in this process")
         except Exception as e:
             print(f"Error processing Xbox game at index {index}: {e}")
+    browser.quit()
 
 def main():
     log_info("Waiting for fetching Xbox games...")
@@ -122,6 +134,7 @@ def main():
         process = multiprocessing.Process(target=process_games_range, args=(start, end, games))
         processes.append(process)
         process.start()
+        time.sleep(1)  # Throttle subprocess creation
 
     for process in processes:
         process.join()

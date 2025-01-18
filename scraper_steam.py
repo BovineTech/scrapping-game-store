@@ -1,7 +1,7 @@
 import multiprocessing
 import requests
 import time
-from utils import save_to_mongo, get_mongo_db, log_info, regions_steam, my_proxies
+from utils import save_to_mongo, get_mongo_db, log_info, regions_steam
 import os
 from dotenv import load_dotenv
 
@@ -19,7 +19,7 @@ def fetch_steam_apps():
 def fetch_game_details(app_id, proxy):
     base_url = "https://store.steampowered.com/api/appdetails"
     try:
-        response = requests.get(base_url, params={"appids": app_id, "l": "en"}, proxies=proxy, timeout=10)
+        response = requests.get(base_url, params={"appids": app_id, "l": "en", "key": STEAM_API_KEY})
         response.raise_for_status()
         data = response.json()
 
@@ -32,7 +32,7 @@ def fetch_game_details(app_id, proxy):
         while index < len(regions_steam):
             region = regions_steam[index]
             try:
-                response = requests.get(base_url, params={"appids": app_id, "cc": region, "l": "en"}, proxies=my_proxies[index % 10], timeout=10)
+                response = requests.get(base_url, params={"appids": app_id, "cc": region, "l": "en", "key": STEAM_API_KEY}, timeout=10)
                 response.raise_for_status()
                 data = response.json()
                 if str(app_id) in data and data[str(app_id)]["success"]:
@@ -42,7 +42,6 @@ def fetch_game_details(app_id, proxy):
                     prices[region] = "Not Available"
                 index += 1
             except Exception as e:
-                print("Steam : ", app_id, f"------too many requests : {my_proxies[index % 10]} : waiting for server")
                 print(f"Error fetching game details: {e}")
     except Exception as e:
         return {"error": f"Error fetching game details: {e}"}

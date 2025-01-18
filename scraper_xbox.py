@@ -4,18 +4,11 @@ import time
 import multiprocessing
 import os
 from dotenv import load_dotenv
-from requests.adapters import HTTPAdapter
 import requests
 
 load_dotenv()
 n_processes = int(os.getenv("n_processes", 8))  # Default to 8
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
-
-# Set up session with retries
-session = requests.Session()
-adapter = HTTPAdapter(pool_connections=100, pool_maxsize=100)
-session.mount('http://', adapter)
-session.mount('https://', adapter)
 
 def fetch_xbox_games():
     browser = get_selenium_browser()
@@ -24,15 +17,6 @@ def fetch_xbox_games():
     soup = BeautifulSoup(browser.page_source, "html.parser")
     browser.quit()
     return soup.find_all('div', class_='ProductCard-module__cardWrapper___6Ls86 shadow')
-
-def fetch_with_retry(url):
-    try:
-        response = requests.get(url, timeout=120)
-        response.raise_for_status()
-        return response
-    except Exception as e:
-        print(f"Error fetching URL {url}: {e}")
-        return None
 
 def process_xbox_game(browser, game):
     try:
@@ -60,11 +44,13 @@ def process_xbox_game(browser, game):
         for region in regions_xbox:
             try:
                 region_url = details_link.replace("en-US", region)
-                response = fetch_with_retry(region_url)
-                if response:
+                response = requests.get(region_url)
+                if response.content:
                     price_soup = BeautifulSoup(response.content, 'html.parser')
                     price = price_soup.find('span', class_="Price-module__boldText___1i2Li Price-module__moreText___sNMVr AcquisitionButtons-module__listedPrice___PS6Zm")
                     prices[region.split('-')[1]] = price.text.strip() if price else "BUNDLE NOT AVAILABLE"
+                else:
+                    prices[region.split('-')[1]] = "BUNDLE NOT AVAILABLE"
             except Exception as e:
                 print(f"Error fetching price for region {region}: {e}")
 

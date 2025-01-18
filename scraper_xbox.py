@@ -6,79 +6,59 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-n_processes=os.getenv("n_processes")
+n_processes = int(os.getenv("n_processes", 8))  # Default to 4 if not set
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
 
 def fetch_xbox_games(browser):
-    browser =  click_loadmore_btn(browser, '//button[contains(@aria-label, "Load more")]')
+    browser = click_loadmore_btn(browser, '//button[contains(@aria-label, "Load more")]')
     soup = BeautifulSoup(browser.page_source, "html.parser")
     return soup.find_all('div', class_='ProductCard-module__cardWrapper___6Ls86 shadow')
 
 def process_xbox_game(browser, game):
-    details_link = game.find('a', href=True)['href']
-    browser.get(details_link)
-    details_soup = BeautifulSoup(browser.page_source, 'html.parser')
+    try:
+        details_link = game.find('a', href=True)['href']
+        browser.get(details_link)
+        details_soup = BeautifulSoup(browser.page_source, 'html.parser')
 
-    tmp = details_soup.find('h1', class_="typography-module__xdsH1___7oFBA ProductDetailsHeader-module__productTitle___Hce0B")
-    title = tmp.text.strip() if tmp else "No Title"
+        def safe_find(tag, css_class, attr=None):
+            element = details_soup.find(tag, class_=css_class)
+            return element[attr] if attr and element else (element.text.strip() if element else None)
 
-    tmp = details_soup.find('span', class_="ProductInfoLine-module__starRatingsDisplayChange___mbgn5 ProductInfoLine-module__textInfo___jOZ96")
-    categories = tmp.text.split("•") if tmp else []
-    if categories:
-        categories.pop(0)
-        rating = categories.pop() if categories[-1].endswith('K') else "Average Rating Not Yet Available"
-    else:
-        categories = "No Categories"
-        rating = "Average Rating Not Yet Available"
-    tmp = details_soup.find('meta', {'name':'description'})['content']
-    short_description = tmp if tmp else "No Short Description"
+        title = safe_find('h1', "typography-module__xdsH1___7oFBA ProductDetailsHeader-module__productTitle___Hce0B") or "No Title"
+        categories_and_rating = safe_find('span', "ProductInfoLine-module__starRatingsDisplayChange___mbgn5 ProductInfoLine-module__textInfo___jOZ96")
+        categories = categories_and_rating.split("•") if categories_and_rating else []
+        rating = categories.pop() if categories and categories[-1].endswith('K') else "Average Rating Not Yet Available"
+        short_description = safe_find('meta', None, 'content') or "No Short Description"
+        full_description = safe_find('p', "Description-module__description___ylcn4 typography-module__xdsBody2___RNdGY ExpandableText-module__container___Uc17O") or "No Full Description"
+        screenshots = [img['src'] for img in details_soup.select('section[aria-label="Gallery"] img')] or []
+        header_image = safe_find('img', "WrappedResponsiveImage-module__image___QvkuN ProductDetailsHeader-module__productImage___QK3JA", 'src') or "No Game Header Image"
+        publisher = safe_find('div', "typography-module__xdsBody2___RNdGY") or "No Publisher"
+        platforms = [item.text.strip() for item in details_soup.select('ul.FeaturesList-module__wrapper___KIw42 li')] or "No Platforms"
+        release_date = safe_find('div', "typography-module__xdsBody2___RNdGY") or "No Release Date"
 
-    tmp = details_soup.find('p', class_="Description-module__description___ylcn4 typography-module__xdsBody2___RNdGY ExpandableText-module__container___Uc17O")
-    full_description = tmp.text.strip() if tmp else "No Full Description"
+        prices = {"us": safe_find('span', "Price-module__boldText___1i2Li Price-module__moreText___sNMVr AcquisitionButtons-module__listedPrice___PS6Zm") or "BUNDLE NOT AVAILABLE"}
+        for region in regions_xbox:
+            browser.get(details_link.replace("en-US", region))
+            price_soup = BeautifulSoup(browser.page_source, 'html.parser')
+            price = price_soup.find('span', class_="Price-module__boldText___1i2Li Price-module__moreText___sNMVr AcquisitionButtons-module__listedPrice___PS6Zm")
+            prices[region.split('-')[1]] = price.text.strip() if price else "BUNDLE NOT AVAILABLE"
 
-    tmp = details_soup.find('section', {'aria-label' : 'Gallery'})
-    screenshots = [img['src'] for img in tmp.find_all('img')] if tmp else []
-
-    tmp = details_soup.find('img', class_='WrappedResponsiveImage-module__image___QvkuN ProductDetailsHeader-module__productImage___QK3JA')
-    header_image = tmp['src'] if tmp else "No Game Header Imgae"
-    
-    tmp = details_soup.find('h3', class_='typography-module__xdsBody1___+TQLW', string='Published by')
-    tmp = tmp.find_parent('div', class_='ModuleColumn-module__col___StJzB') if tmp else ""
-    tmp = tmp.find('div', class_="typography-module__xdsBody2___RNdGY") if tmp else ""
-    publisher = tmp.text.strip() if tmp else "No Publisher"
-
-    tmp = details_soup.find('ul', class_="FeaturesList-module__wrapper___KIw42 commonStyles-module__featureListStyle___8SVho")
-    tmp = tmp.find_all('li') if tmp else ""
-    platforms = [item.text.strip() for item in tmp] if tmp else "No Platforms"
-
-    tmp = details_soup.find('h3', class_='typography-module__xdsBody1___+TQLW', string='Release date')
-    tmp = tmp.find_parent('div', class_='ModuleColumn-module__col___StJzB') if tmp else ""
-    tmp = tmp.find('div', class_="typography-module__xdsBody2___RNdGY") if tmp else ""
-    release_date = tmp.text.strip() if tmp else "No Release Data"
-
-    prices = {}
-    tmp = details_soup.find('span', class_="Price-module__boldText___1i2Li Price-module__moreText___sNMVr AcquisitionButtons-module__listedPrice___PS6Zm")
-    prices["us"] = tmp.text.strip() if tmp else "BUNDLE NOT AVAILABLE"
-    for region in regions_xbox:
-        browser.get(details_link.replace("en-US", region))
-        price_soup = BeautifulSoup(browser.page_source, 'html.parser')
-        tmp = price_soup.find('span', class_="Price-module__boldText___1i2Li Price-module__moreText___sNMVr AcquisitionButtons-module__listedPrice___PS6Zm")
-        prices[region.split('-')[1]] = tmp.text.strip() if tmp else "BUNDLE NOT AVAILABLE"
-
-    game_data = {
-        "title": title,                          
-        "categories": categories,
-        "short_description": short_description,
-        "full_description": full_description,
-        "screenshots": screenshots,
-        "header_image": header_image,
-        "rating": rating,
-        "publisher": publisher,
-        "platforms": platforms,
-        "release_date": release_date,
-        "prices": prices
-    }
-    return game_data
+        return {
+            "title": title,
+            "categories": categories,
+            "short_description": short_description,
+            "full_description": full_description,
+            "screenshots": screenshots,
+            "header_image": header_image,
+            "rating": rating,
+            "publisher": publisher,
+            "platforms": platforms,
+            "release_date": release_date,
+            "prices": prices,
+        }
+    except Exception as e:
+        print(f"Error processing game details: {e}")
+        return None
 
 def process_games_range(start_index, end_index, games):
     browser = get_selenium_browser()
@@ -88,9 +68,10 @@ def process_games_range(start_index, end_index, games):
     for index in range(start_index, end_index):
         try:
             game_data = process_xbox_game(browser, games[index])
-            save_to_mongo(db, "xbox_games", game_data)
-            if (index - start_index + 1) % 100 == 0:
-                log_info(f"Saved Xbox {start_index} ~ {index} games in this process")
+            if game_data:
+                save_to_mongo(db, "xbox_games", game_data)
+                if (index - start_index + 1) % 100 == 0:
+                    log_info(f"Saved {start_index} ~ {index} Xbox games in this process")
         except Exception as e:
             print(f"Error processing Xbox game at index {index}: {e}")
             time.sleep(60)
@@ -108,46 +89,22 @@ def main():
         log_info("No games found to process.")
         return
 
-    # Calculate the ranges for each subprocess
-    chunk_size = (total_games + n_processes - 1) // n_processes  # Ceiling division to cover all games
+    chunk_size = (total_games + n_processes - 1) // n_processes
     ranges = [
-        (i * chunk_size, min((i + 1) * chunk_size - 1, total_games))
+        (i * chunk_size, min((i + 1) * chunk_size, total_games))
         for i in range(n_processes)
     ]
 
-    # Create and start subprocesses
     processes = []
     for start, end in ranges:
         process = multiprocessing.Process(target=process_games_range, args=(start, end, games))
         processes.append(process)
         process.start()
 
-    # Wait for all processes to complete
     for process in processes:
         process.join()
 
     log_info("All processes completed.")
-
-# def main():
-#     browser = get_selenium_browser()
-#     browser.get(XBOX_URL)
-#     log_info("Waiting for fetching Xbox games...")
-#     games = fetch_xbox_games(browser)
-#     db = get_mongo_db()
-
-#     index = 0
-#     while index < len(games):
-#         try:
-#             game_data = process_xbox_game(browser, games[index])
-#             save_to_mongo(db, "xbox_games", game_data)
-#             index += 1
-#             if(index % 50 == 0):
-#                 log_info(f"Saved Xbox {index} games")
-#         except Exception as e:
-#             print(f"Error processing game: {e}")
-#             print("! xbox.py : exception occur : plz check the network !")
-#             time.sleep(60)
-#     browser.quit()
 
 if __name__ == "__main__":
     main()

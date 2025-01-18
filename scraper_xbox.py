@@ -9,14 +9,16 @@ load_dotenv()
 n_processes = int(os.getenv("n_processes", 8))  # Default to 8 if not set
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
 
-def fetch_xbox_games(browser):
+def fetch_xbox_games():
+    browser = get_selenium_browser()
     browser = click_loadmore_btn(browser, '//button[contains(@aria-label, "Load more")]')
     soup = BeautifulSoup(browser.page_source, "html.parser")
+    browser.quit()
     return soup.find_all('div', class_='ProductCard-module__cardWrapper___6Ls86 shadow')
 
 def process_xbox_game(game):
     try:
-        browser = get_selenium_browser()
+        browser = get_selenium_browser()  # Create a new browser instance per process
         details_link = game.find('a', href=True)['href']
         browser.get(details_link)
         details_soup = BeautifulSoup(browser.page_source, 'html.parser')
@@ -80,11 +82,8 @@ def process_games_range(start_index, end_index, games):
             print(f"Error processing Xbox game at index {index}: {e}")
 
 def main():
-    browser = get_selenium_browser()
-    browser.get(XBOX_URL)
     log_info("Waiting for fetching Xbox games...")
-    games = fetch_xbox_games(browser)
-    browser.quit()
+    games = fetch_xbox_games()
 
     total_games = len(games)
     if total_games == 0:
@@ -94,8 +93,14 @@ def main():
     chunk_size = (total_games + n_processes - 1) // n_processes
     ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_games)) for i in range(n_processes)]
 
-    with multiprocessing.Pool(processes=n_processes) as pool:
-        pool.starmap(process_games_range, [(start, end, games) for start, end in ranges])
+    processes = []
+    for start, end in ranges:
+        process = multiprocessing.Process(target=process_games_range, args=(start, end, games))
+        processes.append(process)
+        process.start()
+
+    for process in processes:
+        process.join()
 
     log_info("All processes completed.")
 

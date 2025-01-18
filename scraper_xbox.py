@@ -4,10 +4,20 @@ import time
 import multiprocessing
 import os
 from dotenv import load_dotenv
+from requests.adapters import HTTPAdapter
+from requests.packages.urllib3.util.retry import Retry
+import requests
 
 load_dotenv()
-n_processes = int(os.getenv("n_processes", 8))  # Default to 8 if not set
+n_processes = int(os.getenv("n_processes", 8))  # Default to 8
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
+
+# Set up session with retries
+session = requests.Session()
+retries = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+adapter = HTTPAdapter(pool_connections=100, pool_maxsize=100)
+session.mount('http://', adapter)
+session.mount('https://', adapter)
 
 def fetch_xbox_games():
     browser = get_selenium_browser()
@@ -17,9 +27,18 @@ def fetch_xbox_games():
     browser.quit()
     return soup.find_all('div', class_='ProductCard-module__cardWrapper___6Ls86 shadow')
 
+def fetch_with_retry(url):
+    try:
+        response = session.get(url, timeout=120)
+        response.raise_for_status()
+        return response
+    except Exception as e:
+        print(f"Error fetching URL {url}: {e}")
+        return None
+
 def process_xbox_game(game):
     try:
-        browser = get_selenium_browser()  # Create a new browser instance per process
+        browser = get_selenium_browser()
         details_link = game.find('a', href=True)['href']
         browser.get(details_link)
         details_soup = BeautifulSoup(browser.page_source, 'html.parser')
@@ -34,7 +53,7 @@ def process_xbox_game(game):
         rating = categories.pop() if categories and categories[-1].endswith('K') else "Average Rating Not Yet Available"
         short_description = safe_find('meta', None, 'content') or "No Short Description"
         full_description = safe_find('p', "Description-module__description___ylcn4 typography-module__xdsBody2___RNdGY ExpandableText-module__container___Uc17O") or "No Full Description"
-        screenshots = [img['src'] for img in details_soup.select('section[aria-label="Gallery"] img')] or []
+        screenshots = [img['src'] for img in details_soup.select('section[aria-label=\"Gallery\"] img')] or []
         header_image = safe_find('img', "WrappedResponsiveImage-module__image___QvkuN ProductDetailsHeader-module__productImage___QK3JA", 'src') or "No Game Header Image"
         publisher = safe_find('div', "typography-module__xdsBody2___RNdGY") or "No Publisher"
         platforms = [item.text.strip() for item in details_soup.select('ul.FeaturesList-module__wrapper___KIw42 li')] or "No Platforms"
@@ -43,10 +62,14 @@ def process_xbox_game(game):
         prices = {"us": safe_find('span', "Price-module__boldText___1i2Li Price-module__moreText___sNMVr AcquisitionButtons-module__listedPrice___PS6Zm") or "BUNDLE NOT AVAILABLE"}
         for region in regions_xbox:
             try:
-                browser.get(details_link.replace("en-US", region))
-                price_soup = BeautifulSoup(browser.page_source, 'html.parser')
-                price = price_soup.find('span', class_="Price-module__boldText___1i2Li Price-module__moreText___sNMVr AcquisitionButtons-module__listedPrice___PS6Zm")
-                prices[region.split('-')[1]] = price.text.strip() if price else "BUNDLE NOT AVAILABLE"
+                region_url = details_link.replace("en-US", region)
+                response = fetch_with_retry(region_url)
+                if response:
+                    price_soup = BeautifulSoup(response.content, 'html.parser')
+                    price = price_soup.find('span', class_="Price-module__boldText___1i2Li Price-module__moreText___sNMVr AcquisitionButtons-module__listedPrice___PS6Zm")
+                    prices[region.split('-')[1]] = price.text.strip() if price else "BUNDLE NOT AVAILABLE"
+                else:
+                    prices[region.split('-')[1]] = "Request Failed"
             except Exception as e:
                 print(f"Error fetching price for region {region}: {e}")
 

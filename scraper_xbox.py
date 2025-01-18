@@ -5,7 +5,7 @@ import multiprocessing
 import os
 from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
+from urllib3.util.retry import Retry
 from selenium.webdriver.chrome.options import Options
 import requests
 

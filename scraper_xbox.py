@@ -5,7 +5,6 @@ import multiprocessing
 import os
 from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 from selenium.webdriver.chrome.options import Options
 import requests
 
@@ -15,26 +14,12 @@ XBOX_URL = "https://www.xbox.com/en-US/games/browse"
 
 # Set up session with retries
 session = requests.Session()
-retries = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
 adapter = HTTPAdapter(pool_connections=100, pool_maxsize=100)
 session.mount('http://', adapter)
 session.mount('https://', adapter)
 
-def get_selenium_browser_with_retry(retries=3):
-    for _ in range(retries):
-        try:
-            options = Options()
-            options.add_argument("--headless")
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            return get_selenium_browser(options=options)
-        except Exception as e:
-            print(f"Failed to initialize browser: {e}")
-            time.sleep(5)
-    raise Exception("Could not initialize Selenium browser after retries")
-
 def fetch_xbox_games():
-    browser = get_selenium_browser_with_retry()
+    browser = get_selenium_browser()
     browser.get(XBOX_URL)
     browser = click_loadmore_btn(browser, '//button[contains(@aria-label, "Load more")]')
     soup = BeautifulSoup(browser.page_source, "html.parser")
@@ -103,7 +88,7 @@ def process_xbox_game(browser, game):
 
 def process_games_range(start_index, end_index, games):
     db = get_mongo_db()
-    browser = get_selenium_browser_with_retry()
+    browser = get_selenium_browser()
     log_info(f"Processing games from index {start_index} to {end_index}")
 
     for index in range(start_index, end_index):

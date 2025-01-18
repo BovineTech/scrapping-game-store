@@ -12,11 +12,14 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
+from urllib3.util.retry import Retry
 
 load_dotenv()
 
 chromedriver_path = os.getenv("chromedriver_path")
 chrome_path = os.getenv("chrome_path")
+
+retries = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
 
 my_proxies = [
     {"http": "http://156.228.109.153:3128", "https": "http://156.228.109.153:3128"},
@@ -145,19 +148,25 @@ def save_to_mongo(db, collection_name, data):
         else:
             collection.insert_one(data)
 
-def get_selenium_browser():
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--disable-gpu")
-    options.add_argument("--enable-unsafe-swiftshader")
-    options.add_argument("--disable-software-rasterizer") # Prevent fallback errors
-    options.add_argument("--disable-dev-shm-usage")  # Use shared memory
-    options.add_argument("--no-sandbox")            # Avoid sandboxing (useful in Docker environments)
-    options.add_argument("--max-old-space-size=4096")  # Limit memory usage (4 GB)
-    # Adjust path if needed
-    # options.binary_location = chrome_path
-    service = Service(chromedriver_path)
-    return webdriver.Chrome(service=service, options=options)
+def get_selenium_browser(retries=3):
+    for _ in range(retries):
+        try:
+            options = Options()
+            options.add_argument("--headless")
+            options.add_argument("--disable-gpu")
+            options.add_argument("--enable-unsafe-swiftshader")
+            options.add_argument("--disable-software-rasterizer") # Prevent fallback errors
+            options.add_argument("--disable-dev-shm-usage")  # Use shared memory
+            options.add_argument("--no-sandbox")            # Avoid sandboxing (useful in Docker environments)
+            options.add_argument("--max-old-space-size=4096")  # Limit memory usage (4 GB)
+            # Adjust path if needed
+            # options.binary_location = chrome_path
+            service = Service(chromedriver_path)
+            return webdriver.Chrome(service=service, options=options)
+        except Exception as e:
+            print(f"Failed to initialize browser: {e}")
+            time.sleep(5)
+    raise Exception("Could not initialize Selenium browser after retries")
 
 def click_loadmore_btn(browser, btn_dom):
     count = 0
@@ -171,14 +180,14 @@ def click_loadmore_btn(browser, btn_dom):
             return browser
         except Exception as e:
             print(f"Error processing game: {e}")
-            print("-"*30, "! load more : exception occur : plz check the network !", "-"*30)
+            print("-"*10, "! load more : exception occur : plz check the network !", "-"*10)
             time.sleep(60)
             continue
         btn = browser.find_element(By.XPATH, btn_dom)
         btn.click()
         count += 1
         if(count % 50 == 0):
-            print("-"*20, "Load more button", count, " times clikced in Xbox","-"*20)
+            print("-"*10, "Load more button", count, " times clikced in Xbox","-"*10)
 
 def search_game(browser, search_dom, result_dom, title):
     try:

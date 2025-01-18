@@ -133,9 +133,9 @@ def process_games_range(start_index, end_index, games):
             else:
                 save_to_mongo(db, "nintendo_games", game_data)
                 if (index - start_index + 1) % 50 == 0:
-                    log_info(f"Saved Nintendo {index - start_index + 1} games in this process")
+                    log_info(f"Saved Nintendo {start_index} ~ {index} games in this process")
         except Exception as e:
-            log_info(f"Error processing game at index {index}: {str(e)}")
+            print(f"Error processing game at index {index}: {str(e)}")
 
     browser.quit()
 

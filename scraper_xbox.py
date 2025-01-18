@@ -1,8 +1,10 @@
 from bs4 import BeautifulSoup
 from utils import get_mongo_db, save_to_mongo, get_selenium_browser, log_info, click_loadmore_btn, regions_xbox
 import time
+import multiprocessing
 
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
+n_processes=8
 
 def fetch_xbox_games(browser):
     browser =  click_loadmore_btn(browser, '//button[contains(@aria-label, "Load more")]')
@@ -75,26 +77,74 @@ def process_xbox_game(browser, game):
     }
     return game_data
 
+def process_games_range(start_index, end_index, games):
+    browser = get_selenium_browser()
+    db = get_mongo_db()
+    log_info(f"Processing games from index {start_index} to {end_index}")
+
+    for index in range(start_index, end_index):
+        try:
+            game_data = process_xbox_game(browser, games[index])
+            save_to_mongo(db, "xbox_games", game_data)
+            if (index - start_index + 1) % 100 == 0:
+                log_info(f"Saved Xbox {start_index} ~ {index} games in this process")
+        except Exception as e:
+            print(f"Error processing Xbox game at index {index}: {e}")
+            time.sleep(60)
+    browser.quit()
+
 def main():
     browser = get_selenium_browser()
     browser.get(XBOX_URL)
     log_info("Waiting for fetching Xbox games...")
     games = fetch_xbox_games(browser)
-    db = get_mongo_db()
-
-    index = 0
-    while index < len(games):
-        try:
-            game_data = process_xbox_game(browser, games[index])
-            save_to_mongo(db, "xbox_games", game_data)
-            index += 1
-            if(index % 50 == 0):
-                log_info(f"Saved Xbox {index} games")
-        except Exception as e:
-            print(f"Error processing game: {e}")
-            print("! xbox.py : exception occur : plz check the network !")
-            time.sleep(60)
     browser.quit()
+
+    total_games = len(games)
+    if total_games == 0:
+        log_info("No games found to process.")
+        return
+
+    # Calculate the ranges for each subprocess
+    chunk_size = (total_games + n_processes - 1) // n_processes  # Ceiling division to cover all games
+    ranges = [
+        (i * chunk_size, min((i + 1) * chunk_size - 1, total_games))
+        for i in range(n_processes)
+    ]
+
+    # Create and start subprocesses
+    processes = []
+    for start, end in ranges:
+        process = multiprocessing.Process(target=process_games_range, args=(start, end, games))
+        processes.append(process)
+        process.start()
+
+    # Wait for all processes to complete
+    for process in processes:
+        process.join()
+
+    log_info("All processes completed.")
+
+# def main():
+#     browser = get_selenium_browser()
+#     browser.get(XBOX_URL)
+#     log_info("Waiting for fetching Xbox games...")
+#     games = fetch_xbox_games(browser)
+#     db = get_mongo_db()
+
+#     index = 0
+#     while index < len(games):
+#         try:
+#             game_data = process_xbox_game(browser, games[index])
+#             save_to_mongo(db, "xbox_games", game_data)
+#             index += 1
+#             if(index % 50 == 0):
+#                 log_info(f"Saved Xbox {index} games")
+#         except Exception as e:
+#             print(f"Error processing game: {e}")
+#             print("! xbox.py : exception occur : plz check the network !")
+#             time.sleep(60)
+#     browser.quit()
 
 if __name__ == "__main__":
     main()

@@ -5,7 +5,6 @@ import multiprocessing
 import os
 from dotenv import load_dotenv
 from requests.adapters import HTTPAdapter
-from selenium.webdriver.chrome.options import Options
 import requests
 
 load_dotenv()
@@ -28,7 +27,7 @@ def fetch_xbox_games():
 
 def fetch_with_retry(url):
     try:
-        response = session.get(url, timeout=120)
+        response = requests.get(url, timeout=120)
         response.raise_for_status()
         return response
     except Exception as e:

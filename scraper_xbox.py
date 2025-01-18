@@ -11,6 +11,7 @@ XBOX_URL = "https://www.xbox.com/en-US/games/browse"
 
 def fetch_xbox_games():
     browser = get_selenium_browser()
+    browser.get(XBOX_URL)
     browser = click_loadmore_btn(browser, '//button[contains(@aria-label, "Load more")]')
     soup = BeautifulSoup(browser.page_source, "html.parser")
     browser.quit()

@@ -149,24 +149,18 @@ def save_to_mongo(db, collection_name, data):
             collection.insert_one(data)
 
 def get_selenium_browser(retries=3):
-    for _ in range(retries):
-        try:
-            options = Options()
-            options.add_argument("--headless")
-            options.add_argument("--disable-gpu")
-            options.add_argument("--enable-unsafe-swiftshader")
-            options.add_argument("--disable-software-rasterizer") # Prevent fallback errors
-            options.add_argument("--disable-dev-shm-usage")  # Use shared memory
-            options.add_argument("--no-sandbox")            # Avoid sandboxing (useful in Docker environments)
-            options.add_argument("--max-old-space-size=4096")  # Limit memory usage (4 GB)
-            # Adjust path if needed
-            # options.binary_location = chrome_path
-            service = Service(chromedriver_path)
-            return webdriver.Chrome(service=service, options=options)
-        except Exception as e:
-            print(f"Failed to initialize browser: {e}")
-            time.sleep(5)
-    raise Exception("Could not initialize Selenium browser after retries")
+    options = Options()
+    options.add_argument("--headless")
+    options.add_argument("--disable-gpu")
+    options.add_argument("--enable-unsafe-swiftshader")
+    options.add_argument("--disable-software-rasterizer") # Prevent fallback errors
+    options.add_argument("--disable-dev-shm-usage")  # Use shared memory
+    options.add_argument("--no-sandbox")            # Avoid sandboxing (useful in Docker environments)
+    options.add_argument("--max-old-space-size=4096")  # Limit memory usage (4 GB)
+    # Adjust path if needed
+    # options.binary_location = chrome_path
+    service = Service(chromedriver_path)
+    return webdriver.Chrome(service=service, options=options)
 
 def click_loadmore_btn(browser, btn_dom):
     count = 0

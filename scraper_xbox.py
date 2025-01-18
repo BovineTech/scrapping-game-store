@@ -119,7 +119,6 @@ def main():
         process = multiprocessing.Process(target=process_games_range, args=(start, end, games))
         processes.append(process)
         process.start()
-        time.sleep(1)  # Throttle subprocess creation
 
     for process in processes:
         process.join()

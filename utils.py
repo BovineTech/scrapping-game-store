@@ -12,14 +12,11 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.keys import Keys
-from urllib3.util.retry import Retry
 
 load_dotenv()
 
 chromedriver_path = os.getenv("chromedriver_path")
 chrome_path = os.getenv("chrome_path")
-
-retries = Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
 
 my_proxies = [
     {"http": "http://156.228.109.153:3128", "https": "http://156.228.109.153:3128"},

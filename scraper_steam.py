@@ -19,7 +19,8 @@ def create_session():
     session.mount('https://', adapter)
     return session
 
-def fetch_steam_apps(session):
+def fetch_steam_apps():
+    session = create_session()  # Create session within this function
     response = session.get(STEAM_API_URL, params={"key": STEAM_API_KEY})
     response.raise_for_status()
     return response.json()["applist"]["apps"]
@@ -85,8 +86,9 @@ def fetch_price_for_region(app_id, region, session):
         return region, None
 
 def process_apps_range(start_index, end_index, apps):
-    session = create_session()  # Create a session within each subprocess
+    session = create_session()  # Create session within each subprocess
     db = get_mongo_db()  # Create DB connection within each subprocess
+    log_info(f"Processing games from index {start_index} to {end_index}")
     count = 0
     for index in range(start_index, end_index):
         app = apps[index]
@@ -94,15 +96,16 @@ def process_apps_range(start_index, end_index, apps):
             game_data = fetch_game_details(app["appid"], session)
             if "error" not in game_data:
                 save_to_mongo(db, "steam_games", game_data)
-                count += 1
                 if count % 200 == 0:
                     log_info(f"Saved {start_index} ~ {end_index} Steam games in this process")
+            else:
+                print(game_data["error"])
+            count += 1
         except Exception as e:
             print(f"Error processing app {app['appid']}: {e}")
 
 def main():
-    session = create_session()  # Create the session once
-    apps = fetch_steam_apps(session)
+    apps = fetch_steam_apps()
     total_apps = len(apps)
     if total_apps == 0:
         log_info("No Steam apps found to process.")

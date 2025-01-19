@@ -84,8 +84,9 @@ def fetch_price_for_region(app_id, region, session):
         log_info(f"Error fetching price for region {region}: {e}")
         return region, None
 
-def process_apps_range(start_index, end_index, apps, db):
+def process_apps_range(start_index, end_index, apps):
     session = create_session()  # Create a session within each subprocess
+    db = get_mongo_db()  # Create DB connection within each subprocess
     count = 0
     for index in range(start_index, end_index):
         app = apps[index]
@@ -107,15 +108,13 @@ def main():
         log_info("No Steam apps found to process.")
         return
 
-    db = get_mongo_db()
-
     # Divide apps into ranges for subprocesses
     chunk_size = (total_apps + n_processes - 1) // n_processes
     ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_apps)) for i in range(n_processes)]
 
     # Use Pool to manage processes efficiently
     with multiprocessing.Pool(processes=n_processes) as pool:
-        pool.starmap(process_apps_range, [(start, end, apps, db) for start, end in ranges])
+        pool.starmap(process_apps_range, [(start, end, apps) for start, end in ranges])
 
     log_info("All processes completed.")
 

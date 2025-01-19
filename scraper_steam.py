@@ -11,18 +11,20 @@ n_processes = int(os.getenv("n_processes", 8))  # Default to 8 if not set
 STEAM_API_URL = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
 
 # Set up a session with retries and connection pooling
-session = requests.Session()
-retries = requests.adapters.Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
-adapter = requests.adapters.HTTPAdapter(max_retries=retries)
-session.mount('http://', adapter)
-session.mount('https://', adapter)
+def create_session():
+    session = requests.Session()
+    retries = requests.adapters.Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
+    adapter = requests.adapters.HTTPAdapter(max_retries=retries)
+    session.mount('http://', adapter)
+    session.mount('https://', adapter)
+    return session
 
-def fetch_steam_apps():
+def fetch_steam_apps(session):
     response = session.get(STEAM_API_URL, params={"key": STEAM_API_KEY})
     response.raise_for_status()
     return response.json()["applist"]["apps"]
 
-def fetch_game_details(app_id):
+def fetch_game_details(app_id, session):
     base_url = "https://store.steampowered.com/api/appdetails"
     try:
         response = session.get(base_url, params={"appids": app_id, "l": "en", "key": STEAM_API_KEY})
@@ -38,7 +40,7 @@ def fetch_game_details(app_id):
         # Fetch region prices concurrently
         price_requests = []
         for region in regions_steam:
-            price_requests.append(fetch_price_for_region(app_id, region))
+            price_requests.append(fetch_price_for_region(app_id, region, session))
 
         # Wait for all region price fetching to complete
         price_responses = [price_request for price_request in price_requests]
@@ -67,7 +69,7 @@ def fetch_game_details(app_id):
     except Exception as e:
         return {"error": f"Error fetching game details: {e}"}
 
-def fetch_price_for_region(app_id, region):
+def fetch_price_for_region(app_id, region, session):
     base_url = "https://store.steampowered.com/api/appdetails"
     try:
         response = session.get(base_url, params={"appids": app_id, "cc": region, "l": "en", "key": STEAM_API_KEY}, timeout=10)
@@ -83,11 +85,12 @@ def fetch_price_for_region(app_id, region):
         return region, None
 
 def process_apps_range(start_index, end_index, apps, db):
+    session = create_session()  # Create a session within each subprocess
     count = 0
     for index in range(start_index, end_index):
         app = apps[index]
         try:
-            game_data = fetch_game_details(app["appid"])
+            game_data = fetch_game_details(app["appid"], session)
             if "error" not in game_data:
                 save_to_mongo(db, "steam_games", game_data)
                 count += 1
@@ -97,7 +100,8 @@ def process_apps_range(start_index, end_index, apps, db):
             print(f"Error processing app {app['appid']}: {e}")
 
 def main():
-    apps = fetch_steam_apps()
+    session = create_session()  # Create the session once
+    apps = fetch_steam_apps(session)
     total_apps = len(apps)
     if total_apps == 0:
         log_info("No Steam apps found to process.")

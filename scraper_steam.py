@@ -1,36 +1,36 @@
 import multiprocessing
 import requests
-import time
+from requests.adapters import Retry, HTTPAdapter
 from utils import save_to_mongo, get_mongo_db, log_info, regions_steam
-import os
 from dotenv import load_dotenv
-import random
+import itertools
 
 load_dotenv()
 # STEAM_API_KEY = os.getenv("STEAM_API_KEY")
 n_processes = 32  # Set to 32 subprocesses
 STEAM_API_URL = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
 
-# Load proxies from a file or environment variable
-PROXIES = [line.strip() for line in open("proxies.txt")]  # Assuming proxies are in proxies.txt
-proxy_id = 0
-# Calculate proxies per process
-# proxies_per_process = len(PROXIES) // n_processes
+# Load proxies from a file
+PROXIES = [line.strip() for line in open("proxies.txt") if line.strip()]
+proxy_pool = itertools.cycle(PROXIES)  # Round-robin proxy cycling
 
 # Set up a session with retries and connection pooling
-def create_session():
+def create_session(proxy):
     session = requests.Session()
-    retries = requests.adapters.Retry(total=5, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
-    adapter = requests.adapters.HTTPAdapter(max_retries=retries)
+    retries = Retry(
+        total=5, 
+        backoff_factor=1, 
+        status_forcelist=[500, 502, 503, 504]
+    )
+    adapter = HTTPAdapter(max_retries=retries)
     session.mount('http://', adapter)
     session.mount('https://', adapter)
-    proxy_id = (proxy_id + 1) % 1000
-    proxy = PROXIES[proxy_id]
+
+    # Assign a proxy to the session
     session.proxies = {"http": proxy, "https": proxy}
     return session
 
 def fetch_steam_apps(session):
-    # response = session.get(STEAM_API_URL, params={"key": STEAM_API_KEY})
     response = session.get(STEAM_API_URL)
     response.raise_for_status()
     return response.json()["applist"]["apps"]
@@ -53,15 +53,10 @@ def fetch_game_details(app_id, session):
         for region in regions_steam:
             price_requests.append(fetch_price_for_region(app_id, region, session))
 
-        # Wait for all region price fetching to complete
-        price_responses = [price_request for price_request in price_requests]
-
         # Aggregate region prices
+        price_responses = [price_request for price_request in price_requests]
         for region, price_info in price_responses:
-            if price_info:
-                prices[region] = price_info
-            else:
-                prices[region] = "Not Available"
+            prices[region] = price_info if price_info else "Not Available"
 
         game_details = {
             "title": game_data.get("name", "N/A"),
@@ -95,12 +90,12 @@ def fetch_price_for_region(app_id, region, session):
         log_info(f"Error fetching price for region {region}: {e}")
         return region, None
 
-def process_apps_range(start_index, end_index, apps, proxy_chunk):
-    # Each process now uses a chunk of proxies
-    session = create_session()  # Assign a proxy to the session
+def process_apps_range(start_index, end_index, apps, proxy):
+    session = create_session(proxy)  # Assign a proxy to the session
     db = get_mongo_db()  # Create DB connection within each subprocess
-    log_info(f"Processing games from index {start_index} to {end_index}")
+    log_info(f"Processing games from index {start_index} to {end_index} using proxy {proxy}")
     count = 0
+
     for index in range(start_index, end_index):
         app = apps[index]
         try:
@@ -116,7 +111,9 @@ def process_apps_range(start_index, end_index, apps, proxy_chunk):
             print(f"Error processing app {app['appid']}: {e}")
 
 def main():
-    apps = fetch_steam_apps(create_session())  # Initial fetch using a session without a proxy
+    proxy_list = list(itertools.islice(proxy_pool, n_processes))  # Get unique proxies for each process
+
+    apps = fetch_steam_apps(create_session(next(proxy_pool)))  # Initial fetch using a proxy
     total_apps = len(apps)
     if total_apps == 0:
         log_info("No Steam apps found to process.")
@@ -126,9 +123,9 @@ def main():
     chunk_size = (total_apps + n_processes - 1) // n_processes
     ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_apps)) for i in range(n_processes)]
 
-    # Use Pool to manage processes efficiently
+    # Use Pool to manage processes efficiently with round-robin proxies
     with multiprocessing.Pool(processes=n_processes) as pool:
-        pool.starmap(process_apps_range, [(start, end, apps) for (start, end) in ranges])
+        pool.starmap(process_apps_range, [(start, end, apps, proxy_list[i]) for i, (start, end) in enumerate(ranges)])
 
     log_info("All processes completed.")
 

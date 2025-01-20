@@ -3,7 +3,7 @@ import requests
 import multiprocessing
 import re
 import time
-from utils import log_info, save_to_mongo, get_mongo_db, regions_playstation
+from utils import log_info, log_error, save_to_mongo, get_mongo_db, regions_playstation
 import os
 from dotenv import load_dotenv
 
@@ -105,7 +105,6 @@ def process_playstation_game(game):
     except Exception as e:
         log_info(f"Error processing game: {e}")
 
-
 def process_games_range(start_index, end_index, games):
     log_info(f"Processing games from index {start_index} to {end_index}")
     db = get_mongo_db()
@@ -117,6 +116,8 @@ def process_games_range(start_index, end_index, games):
                 save_to_mongo(db, "playstation_games", game_data)
                 if (index - start_index + 1) % 100 == 0:
                     log_info(f"Saved {index - start_index + 1} games in this process")
+                else:
+                    log_error(f"Please check {index} game data in Playstation")
         except Exception as e:
             log_info(f"Error processing game at index {index}: {e}")
 
@@ -129,6 +130,7 @@ def main():
     if total_games == 0:
         log_info("No games found to process.")
         return
+    log_info(f"{total_games} games are fetched in Playstation")
 
     chunk_size = (total_games + n_processes - 1) // n_processes
     ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_games)) for i in range(n_processes)]

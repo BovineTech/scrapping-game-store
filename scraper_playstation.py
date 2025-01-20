@@ -130,7 +130,7 @@ def main():
     if total_games == 0:
         log_info("No games found to process.")
         return
-    log_info(f"{total_games} games are fetched in Playstation")
+    log_info(f"{total_games} games are fetched in Playstation.")
 
     chunk_size = (total_games + n_processes - 1) // n_processes
     ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_games)) for i in range(n_processes)]

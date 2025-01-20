@@ -4,8 +4,6 @@ from requests.adapters import Retry, HTTPAdapter
 from utils import save_to_mongo, get_mongo_db, log_info, regions_steam
 from dotenv import load_dotenv
 import itertools
-import random
-import time
 
 load_dotenv()
 n_processes = 32  # Set to 32 subprocesses
@@ -79,7 +77,6 @@ def fetch_price_for_region(app_id, region):
         proxy = next(proxy_pool)  # Rotate proxies dynamically
         session = create_session(proxy)
         try:
-            time.sleep(random.uniform(1, 3))  # Add random delay to avoid detection
             response = session.get(base_url, params={"appids": app_id, "cc": region, "l": "en"}, timeout=10)
             response.raise_for_status()
             data = response.json()

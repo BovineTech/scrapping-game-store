@@ -104,8 +104,6 @@ def process_apps_range(start_index, end_index, apps, proxy):
                 save_to_mongo(db, "steam_games", game_data)
                 if count % 200 == 0:
                     log_info(f"Saved {start_index} ~ {end_index} Steam games in this process")
-            else:
-                print(game_data["error"])
             count += 1
         except Exception as e:
             print(f"Error processing app {app['appid']}: {e}")

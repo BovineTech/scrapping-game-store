@@ -16,14 +16,14 @@ proxy_pool = itertools.cycle(PROXIES)  # Round-robin proxy cycling
 # Set up a session with retries and connection pooling
 def create_session(proxy):
     session = requests.Session()
-    retries = Retry(
-        total=5, 
-        backoff_factor=2,  # Increase delay exponentially
-        status_forcelist=[429, 500, 502, 503, 504],  # Include 429 for rate limiting
-    )
-    adapter = HTTPAdapter(max_retries=retries)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
+    # retries = Retry(
+    #     total=5, 
+    #     backoff_factor=2,  # Increase delay exponentially
+    #     status_forcelist=[429, 500, 502, 503, 504],  # Include 429 for rate limiting
+    # )
+    # adapter = HTTPAdapter(max_retries=retries)
+    # session.mount('http://', adapter)
+    # session.mount('https://', adapter)
 
     # Assign a proxy to the session
     session.proxies = {"http": proxy, "https": proxy}
@@ -92,7 +92,7 @@ def process_apps_range(start_index, end_index, apps, proxy):
     session = create_session(proxy)
     db = get_mongo_db()
     log_info(f"Processing games from index {start_index} to {end_index} using proxy {proxy}")
-    count = 0
+    count = 1
 
     for index in range(start_index, end_index):
         app = apps[index]
@@ -100,7 +100,7 @@ def process_apps_range(start_index, end_index, apps, proxy):
             game_data = fetch_game_details(app["appid"], session)
             if "error" not in game_data:
                 save_to_mongo(db, "steam_games", game_data)
-                if count % 200 == 0:
+                if count % 100 == 0:
                     log_info(f"Saved {start_index} ~ {index} Steam games in this process")
             count += 1
         except Exception as e:

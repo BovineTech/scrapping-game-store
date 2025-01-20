@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 import random
 
 load_dotenv()
-STEAM_API_KEY = os.getenv("STEAM_API_KEY")
+# STEAM_API_KEY = os.getenv("STEAM_API_KEY")
 n_processes = 32  # Set to 32 subprocesses
 STEAM_API_URL = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
 
@@ -30,14 +30,15 @@ def create_session():
     return session
 
 def fetch_steam_apps(session):
-    response = session.get(STEAM_API_URL, params={"key": STEAM_API_KEY})
+    # response = session.get(STEAM_API_URL, params={"key": STEAM_API_KEY})
+    response = session.get(STEAM_API_URL)
     response.raise_for_status()
     return response.json()["applist"]["apps"]
 
 def fetch_game_details(app_id, session):
     base_url = "https://store.steampowered.com/api/appdetails"
     try:
-        response = session.get(base_url, params={"appids": app_id, "l": "en", "key": STEAM_API_KEY})
+        response = session.get(base_url, params={"appids": app_id, "l": "en"})
         response.raise_for_status()
         data = response.json()
 
@@ -82,7 +83,7 @@ def fetch_game_details(app_id, session):
 def fetch_price_for_region(app_id, region, session):
     base_url = "https://store.steampowered.com/api/appdetails"
     try:
-        response = session.get(base_url, params={"appids": app_id, "cc": region, "l": "en", "key": STEAM_API_KEY}, timeout=10)
+        response = session.get(base_url, params={"appids": app_id, "cc": region, "l": "en"}, timeout=10)
         response.raise_for_status()
         data = response.json()
         if str(app_id) in data and data[str(app_id)]["success"]:

@@ -71,28 +71,22 @@ def fetch_game_details(app_id, session):
 
 def fetch_price_for_region(app_id, region):
     base_url = "https://store.steampowered.com/api/appdetails"
-    max_attempts = 5
+    proxy = next(proxy_pool)  # Rotate proxies dynamically
+    session = create_session(proxy)
+    try:
+        response = session.get(base_url, params={"appids": app_id, "cc": region, "l": "en"}, timeout=10)
+        response.raise_for_status()
+        data = response.json()
 
-    for attempt in range(max_attempts):
-        proxy = next(proxy_pool)  # Rotate proxies dynamically
-        session = create_session(proxy)
-        try:
-            response = session.get(base_url, params={"appids": app_id, "cc": region, "l": "en"}, timeout=10)
-            response.raise_for_status()
-            data = response.json()
+        if str(app_id) in data and data[str(app_id)]["success"]:
+            price_info = data[str(app_id)]["data"].get("price_overview")
+            return price_info["final_formatted"] if price_info else "Free or Not Available"
+        else:
+            return "Not Available"
 
-            if str(app_id) in data and data[str(app_id)]["success"]:
-                price_info = data[str(app_id)]["data"].get("price_overview")
-                return price_info["final_formatted"] if price_info else "Free or Not Available"
-            else:
-                return "Not Available"
-
-        except requests.exceptions.RequestException as e:
-            print(f"Attempt {attempt + 1}: Error fetching price for region {region} using proxy {proxy}: {e}")
-            if attempt == max_attempts - 1:
-                return None  # Return None after all attempts fail
-
-    return None
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching price for region {region} using proxy {proxy}: {e}")
+        return None
 
 def process_apps_range(start_index, end_index, apps, proxy):
     session = create_session(proxy)

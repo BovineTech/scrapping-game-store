@@ -8,7 +8,7 @@ import requests
 import itertools
 from requests.adapters import HTTPAdapter
 
-n_processes = 200
+n_processes = 100
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
 
 # Load proxies from file
@@ -17,13 +17,10 @@ with open("proxies.txt") as f:
 proxy_pool = itertools.cycle(PROXIES)  # Efficient round-robin proxy cycling
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:110.0) Gecko/20100101 Firefox/110.0",
     "Accept-Language": "en-US,en;q=0.9",
     "Referer": "https://www.xbox.com/",
-    "DNT": "1",
-    "Cache-Control": "no-cache",
-    "Pragma": "no-cache",
-    "Connection": "keep-alive"
+    "Connection": "keep-alive",
 }
 
 def create_session(proxy_list):

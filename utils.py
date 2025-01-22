@@ -163,7 +163,6 @@ def click_loadmore_btn(browser, btn_dom):
             continue
         btn = browser.find_element(By.XPATH, btn_dom)
         btn.click()
-        time.sleep(3)
         count += 1
         if(count % 50 == 0):
             print("-"*10, "Load more button", count, " times clikced in Xbox","-"*10)

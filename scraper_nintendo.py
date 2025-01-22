@@ -150,11 +150,13 @@ def main():
         return
     
     # Calculate the ranges for each subprocess
-    chunk_size = (total_games + n_processes - 1) // n_processes  # Ceiling division to cover all games
-    ranges = [
-        (i * chunk_size, min((i + 1) * chunk_size - 1, total_games))
-        for i in range(n_processes)
-    ]
+    # chunk_size = (total_games + n_processes - 1) // n_processes  # Ceiling division to cover all games
+    # ranges = [
+    #     (i * chunk_size, min((i + 1) * chunk_size - 1, total_games))
+    #     for i in range(n_processes)
+    # ]
+    chunk_size = (total_games + n_processes - 1) // n_processes
+    ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_games)) for i in range(n_processes)]
 
     # Use Pool to manage processes efficiently with proxies
     with multiprocessing.Pool(processes=n_processes) as pool:

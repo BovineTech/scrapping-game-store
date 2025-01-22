@@ -7,7 +7,12 @@ from utils import log_info, save_to_mongo, get_mongo_db, regions_playstation
 
 n_processes = 32  # Adjust based on your system's performance
 PLAYSTATION_URL = "https://store.playstation.com/en-us/pages/browse/1"
-HEADERS = {"User-Agent": "Mozilla/5.0"}  # Adding headers to reduce blocking
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://www.playstation.com",
+    "Connection": "keep-alive",
+}
 
 def get_total_pages():
     while True:
@@ -18,9 +23,17 @@ def get_total_pages():
             ol_tag = soup.select_one('ol.psw-l-space-x-1.psw-l-line-center.psw-list-style-none')
             total_pages = int(ol_tag.select('li')[-1].find('span', class_="psw-fill-x").text.strip())
             return total_pages
-        except requests.RequestException as e:
+        except requests.exceptions.HTTPError as e:
             print(f"Error fetching total pages: {e}")
-            time.sleep(5)  # Retry after delay
+            if response.status_code == 403:
+                print("Access denied. Trying again with delay...")
+                time.sleep(10)  # Delay to prevent further blocking
+                continue
+            break
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+            time.sleep(10)
+            continue
 
 def fetch_page_links(start_page, end_page):
     links = []

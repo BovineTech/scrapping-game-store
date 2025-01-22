@@ -3,10 +3,18 @@ import requests
 import multiprocessing
 import re
 import time
+import itertools
 from utils import log_info, save_to_mongo, get_mongo_db, regions_playstation
+from requests.adapters import HTTPAdapter
 
 n_processes = 32  # Adjust based on your system's performance
 PLAYSTATION_URL = "https://store.playstation.com/en-us/pages/browse/1"
+
+# Load proxies from file
+with open("proxies.txt") as f:
+    PROXIES = [line.strip() for line in f if line.strip()]
+proxy_pool = itertools.cycle(PROXIES)  # Efficient round-robin proxy cycling
+
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0",
     "Accept-Language": "en-US,en;q=0.9",
@@ -14,10 +22,20 @@ HEADERS = {
     "Connection": "keep-alive",
 }
 
+# Set up a requests session with proxy and retry logic
+def create_session():
+    proxy = next(proxy_pool)
+    session = requests.Session()
+    session.proxies = {"http": proxy, "https": proxy}
+    session.headers.update(HEADERS)
+    session.mount('https://', HTTPAdapter(max_retries=3))
+    return session
+
 def get_total_pages():
     while True:
         try:
-            response = requests.get(PLAYSTATION_URL, headers=HEADERS, timeout=15)
+            session = create_session()
+            response = session.get(PLAYSTATION_URL, timeout=15)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
             ol_tag = soup.select_one('ol.psw-l-space-x-1.psw-l-line-center.psw-list-style-none')
@@ -26,8 +44,8 @@ def get_total_pages():
         except requests.exceptions.HTTPError as e:
             print(f"Error fetching total pages: {e}")
             if response.status_code == 403:
-                print("Access denied. Trying again with delay...")
-                time.sleep(10)  # Delay to prevent further blocking
+                print("Access denied. Trying with a new proxy...")
+                time.sleep(10)
                 continue
             break
         except Exception as e:
@@ -40,7 +58,8 @@ def fetch_page_links(start_page, end_page):
     for i in range(start_page, end_page):
         try:
             url = f"https://store.playstation.com/en-us/pages/browse/{i + 1}"
-            response = requests.get(url, headers=HEADERS, timeout=15)
+            session = create_session()
+            response = session.get(url, timeout=15)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
             all_links = [a['href'] for a in soup.find_all('a', href=True)]
@@ -64,7 +83,8 @@ def fetch_playstation_games(total_pages):
 def process_playstation_game(game):
     try:
         url = f"https://store.playstation.com{game}"
-        response = requests.get(url, headers=HEADERS, timeout=15)
+        session = create_session()
+        response = session.get(url, timeout=15)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, "html.parser")
 
@@ -95,7 +115,8 @@ def fetch_game_prices(game):
     for region in regions_playstation:
         try:
             region_url = f"https://store.playstation.com{game.replace('en-us', region)}"
-            response = requests.get(region_url, headers=HEADERS, timeout=10)
+            session = create_session()
+            response = session.get(region_url, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
             price_tag = soup.find(attrs={"data-qa": "mfeCtaMain#offer0#finalPrice"})

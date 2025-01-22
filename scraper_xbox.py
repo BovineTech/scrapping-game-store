@@ -11,10 +11,10 @@ from requests.adapters import HTTPAdapter
 n_processes = 100
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
 
-# Load proxies from file
-with open("proxies.txt") as f:
-    PROXIES = [line.strip() for line in f if line.strip()]
-proxy_pool = itertools.cycle(PROXIES)  # Efficient round-robin proxy cycling
+# # Load proxies from file
+# with open("proxies.txt") as f:
+#     PROXIES = [line.strip() for line in f if line.strip()]
+# proxy_pool = itertools.cycle(PROXIES)  # Efficient round-robin proxy cycling
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:110.0) Gecko/20100101 Firefox/110.0",
@@ -23,10 +23,11 @@ HEADERS = {
     "Connection": "keep-alive",
 }
 
-def create_session(proxy_list):
-    proxy = next(itertools.cycle(proxy_list))
+# def create_session(proxy_list):
+def create_session():
+    # proxy = next(itertools.cycle(proxy_list))
     session = requests.Session()
-    session.proxies = {"http": proxy, "https": proxy}
+    # session.proxies = {"http": proxy, "https": proxy}
     session.headers.update(HEADERS)
     session.mount('https://', HTTPAdapter(max_retries=3))
     return session
@@ -49,10 +50,12 @@ def safe_find(soup, tag, css_class=None, attr=None):
         return element[attr] if element else None
     return element.text.strip() if element else "N/A"
 
-def fetch_price_for_region(details_link, region, proxy_list):
+# def fetch_price_for_region(details_link, region, proxy_list):
+def fetch_price_for_region(details_link, region):
     try:
         region_url = details_link.replace("en-US", region)
-        session = create_session(proxy_list)
+        # session = create_session(proxy_list)
+        session = create_session()
         response = session.get(region_url, timeout=10)
         response.raise_for_status()
         price_soup = BeautifulSoup(response.content, 'html.parser')
@@ -62,7 +65,8 @@ def fetch_price_for_region(details_link, region, proxy_list):
         print(f"Error fetching price for region {region}: {e}")
         return "BUNDLE NOT AVAILABLE"
 
-def process_xbox_game(browser, game, proxy_list):
+# def process_xbox_game(browser, game, proxy_list):
+def process_xbox_game(browser, game):
     try:
         details_link = game.find('a', href=True)['href']
         browser.get(details_link)
@@ -100,13 +104,15 @@ def process_xbox_game(browser, game, proxy_list):
         print(f"Error processing game details: {e}")
         return None
 
-def process_games_range(start_index, end_index, games, proxy_list):
+# def process_games_range(start_index, end_index, games, proxy_list):
+def process_games_range(start_index, end_index, games):
     db = get_mongo_db()
     browser = get_selenium_browser()
 
     for index in range(start_index, end_index):
         try:
-            game_data = process_xbox_game(browser, games[index], proxy_list)
+            # game_data = process_xbox_game(browser, games[index], proxy_list)
+            game_data = process_xbox_game(browser, games[index])
             if game_data:
                 save_to_mongo(db, "xbox_games", game_data)
         except Exception as e:
@@ -125,10 +131,11 @@ def main():
     log_info(f"Found {total_games} games in Xbox.")
     chunk_size = (total_games + n_processes - 1) // n_processes
     ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_games)) for i in range(n_processes)]
-    proxy_list = list(itertools.islice(proxy_pool, n_processes))  # Get unique proxies for each process
+    # proxy_list = list(itertools.islice(proxy_pool, n_processes))  # Get unique proxies for each process
 
     with multiprocessing.Pool(processes=n_processes) as pool:
-        pool.starmap(process_games_range, [(start, end, games, proxy_list[i]) for i, (start, end) in enumerate(ranges)])
+        pool.starmap(process_games_range, [(start, end, games) for start, end in enumerate(ranges)])
+        # pool.starmap(process_games_range, [(start, end, games, proxy_list[i]) for i, (start, end) in enumerate(ranges)])
 
     log_info("All Xbox processes completed.")
 

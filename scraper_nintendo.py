@@ -2,7 +2,14 @@ import requests
 import re
 import multiprocessing
 from bs4 import BeautifulSoup
-from utils import log_info, get_mongo_db, save_to_mongo, get_selenium_browser, search_game, regions_nintendo
+from utils import (
+    log_info, get_mongo_db, save_to_mongo, 
+    get_selenium_browser, search_game, regions_nintendo
+)
+import warnings
+
+# Suppress deprecation warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 n_processes = 16  # Adjust based on system performance
 
@@ -19,9 +26,13 @@ def fetch_games():
     except requests.RequestException as e:
         print(f"Nintendo : Error fetching games: {e}")
         return []
-
+    
 def safe_find(soup, selector, attr=None):
-    element = soup.select_one(selector)
+    if isinstance(soup, list):  # Handle case where a list is passed
+        print(f"Warning: Expected single tag but got list for selector {selector}")
+        soup = soup[0] if soup else None
+    
+    element = soup.select_one(selector) if soup else None
     if attr:
         return element[attr] if element else None
     return element.text.strip() if element else "N/A"
@@ -39,36 +50,36 @@ def process_nintendo_game(browser, game):
         browser.get(game_link)
         soup = BeautifulSoup(browser.page_source, "html.parser")
 
-        header_image = safe_find(soup, f'img[alt="{title} 1"]', 'src') or "No Image"
-        rating = safe_find(soup, 'h3:contains("ESRB rating") + div a') or "No Rating"
+        header_image = safe_find(soup.find('img', {'alt': f'{title} 1'}), 'src') or "No Image"
+        rating = safe_find(soup, 'h3:-soup-contains("ESRB rating") + div a') or "No Rating"
         short_description = safe_find(soup, 'meta[name="description"]', 'content') or "No Description"
-        platforms = safe_find(soup, 'div.sc-1i9d4nw-14.gxzajP span') or "Unknown"
+        platforms = safe_find(soup.find('div', class_='sc-1i9d4nw-14 gxzajP span')) or "Unknown"
         screenshots = [img['src'] for img in soup.select('div.-fzAB.SUqIq img')] or []
 
         prices = {}
-        tmp = soup.select_one('span.W990N.QS4uJ, div.o2BsP.QS4uJ')
-        prices["us"] = tmp.text.split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATELY"
+        tmp = safe_find(soup, 'span.W990N.QS4uJ, div.o2BsP.QS4uJ')
+        prices["us"] = tmp.split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATELY"
 
         # Brazil Price
         brazil_link = game_link.replace("/us/", "/pt-br/")
         browser.get(brazil_link)
         brazil_soup = BeautifulSoup(browser.page_source, 'html.parser')
-        tmp = brazil_soup.select_one('span.W990N.QS4uJ, div.o2BsP.QS4uJ')
-        prices['br'] = tmp.text.replace('\xa0', ' ').split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATELY"
+        tmp = safe_find(brazil_soup, 'span.W990N.QS4uJ, div.o2BsP.QS4uJ')
+        prices['br'] = tmp.replace('\xa0', ' ').split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATELY"
 
         for region in regions_nintendo:
             region_url = game_link.replace("/us/", f"/{region}/")
             browser.get(region_url)
             region_soup = BeautifulSoup(browser.page_source, 'html.parser')
-            tmp = region_soup.select_one('span.W990N.QS4uJ, div.o2BsP.QS4uJ')
-            prices[region.split('-')[1]] = tmp.text.split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATELY"
+            tmp = safe_find(region_soup, 'span.W990N.QS4uJ, div.o2BsP.QS4uJ')
+            prices[region.split('-')[1]] = tmp.split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATELY"
 
-        # Japan
+        # Fetch Japan Price
         browser.get(JAPAN_URL)
         search_dom = 'input.nc3-c-search__boxText'
         result_dom = 'div.nc3-c-softCard__listItemPrice'
-        soup = search_game(browser, search_dom, result_dom, title)
-        prices['jp'] = safe_find(soup, 'div.nc3-c-softCard__listItemPrice') or "NOT AVAILABLE SEPARATELY"
+        japan_soup = search_game(browser, search_dom, result_dom, title)
+        prices['jp'] = safe_find(japan_soup, 'div.nc3-c-softCard__listItemPrice') or "NOT AVAILABLE SEPARATELY"
 
         return {
             "title": title,
@@ -105,7 +116,7 @@ def process_games_range(start_index, end_index, games):
     browser.quit()
 
 def main():
-    log_info("Waiting for fetching Nintendo games...")
+    log_info("Fetching Nintendo games...")
     games = fetch_games()
 
     total_games = len(games)

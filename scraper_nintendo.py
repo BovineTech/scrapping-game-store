@@ -28,17 +28,16 @@ def fetch_games():
         return []
     
 def safe_find(soup, selector, attr=None):
-    if not soup or not selector:
+    if soup is None or not selector:
         print(f"Error: Invalid arguments passed to safe_find: soup={soup}, selector={selector}")
         return "N/A"
 
-    if isinstance(soup, list):
-        print(f"Warning: Expected single tag but got list for selector {selector}")
-        soup = soup[0] if soup else None
+    element = soup.select_one(selector)
+    if element is None:
+        return "N/A"
 
-    element = soup.select_one(selector) if soup else None
     if attr:
-        return element[attr] if element else None
+        return element.get(attr, "N/A")
     return element.text.strip() if element else "N/A"
 
 def process_nintendo_game(browser, game):
@@ -54,10 +53,14 @@ def process_nintendo_game(browser, game):
         browser.get(game_link)
         soup = BeautifulSoup(browser.page_source, "html.parser")
 
-        header_image = safe_find(soup.find('img', {'alt': f'{title} 1'}), 'src') or "No Image"
+        if not soup:
+            print(f"Error: Unable to load page content for {title}")
+            return None
+
+        header_image = safe_find(soup, f'img[alt="{title} 1"]', 'src') or "No Image"
         rating = safe_find(soup, 'h3:-soup-contains("ESRB rating") + div a') or "No Rating"
         short_description = safe_find(soup, 'meta[name="description"]', 'content') or "No Description"
-        platforms = safe_find(soup.find('div', class_='sc-1i9d4nw-14 gxzajP span')) or "Unknown"
+        platforms = safe_find(soup, 'div.sc-1i9d4nw-14.gxzajP span') or "Unknown"
         screenshots = [img['src'] for img in soup.select('div.-fzAB.SUqIq img')] or []
 
         prices = {}

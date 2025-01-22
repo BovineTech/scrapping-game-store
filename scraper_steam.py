@@ -101,6 +101,7 @@ def main():
         return
 
     total_apps = len(apps)
+    log_info(f"Found {total_apps} games in Steam")
     chunk_size = (total_apps + n_processes - 1) // n_processes
     ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_apps)) for i in range(n_processes)]
 

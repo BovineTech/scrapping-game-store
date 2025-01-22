@@ -20,7 +20,7 @@ def get_total_pages():
             return total_pages
         except requests.RequestException as e:
             print(f"Error fetching total pages: {e}")
-            time.sleep(20)  # Retry after delay
+            # time.sleep(20)  # Retry after delay
 
 def fetch_page_links(start_page, end_page):
     links = []

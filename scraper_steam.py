@@ -20,15 +20,13 @@ def create_session(proxy):
     session.mount('https://', HTTPAdapter(max_retries=3))  # Retry on failure
     return session
 
-def fetch_steam_apps():
-    proxy = next(proxy_pool)
-    session = create_session(proxy)
+def fetch_steam_apps(session):
     try:
         response = session.get(STEAM_API_URL, timeout=15)
         response.raise_for_status()
         return response.json().get("applist", {}).get("apps", [])
     except requests.RequestException as e:
-        log_info(f"Failed to fetch app list with proxy {proxy}: {e}")
+        print(f"Failed to fetch app list : {e}")
         return []
 
 def fetch_game_details(app_id, session):
@@ -45,7 +43,6 @@ def fetch_game_details(app_id, session):
         prices = {region: fetch_price_for_region(app_id, region) for region in regions_steam}
 
         return {
-            "app_id": app_id,
             "title": game_data.get("name", "N/A"),
             "categories": [c["description"] for c in game_data.get("categories", [])],
             "short_description": game_data.get("short_description", "N/A"),
@@ -69,7 +66,7 @@ def fetch_price_for_region(app_id, region):
         response = session.get(base_url, params={"appids": app_id, "cc": region, "l": "en"}, timeout=10)
         response.raise_for_status()
         data = response.json()
-        
+
         if str(app_id) in data and data[str(app_id)]["success"]:
             price_info = data[str(app_id)]["data"].get("price_overview")
             return price_info.get("final_formatted", "Free or Not Available") if price_info else "Not Available"
@@ -77,25 +74,28 @@ def fetch_price_for_region(app_id, region):
         print(f"Error fetching price for {app_id} in {region}: {e}")
     return "Not Available"
 
-def process_apps_range(start_index, end_index, apps):
-    proxy = next(proxy_pool)
+def process_apps_range(start_index, end_index, apps, proxy):
     session = create_session(proxy)
     db = get_mongo_db()
+    log_info(f"Processing games from index {start_index} to {end_index} using proxy {proxy}")
+    count = 1
 
-    log_info(f"Scraping {start_index} ~ {end_index} steam games...proxy : {proxy}")
     for index in range(start_index, end_index):
         app = apps[index]
         try:
             game_data = fetch_game_details(app["appid"], session)
             if "error" not in game_data:
                 save_to_mongo(db, "steam_games", game_data)
-                if index % 200 == 0:
-                    log_info(f"Saved {start_index} ~ {index} games in this process.")
+                if count % 200 == 0:
+                    log_info(f"Saved {start_index} ~ {index} Steam games in this process")
+            count += 1
         except Exception as e:
             print(f"Error processing app {app['appid']}: {e}")
 
 def main():
-    apps = fetch_steam_apps()
+    proxy_list = list(itertools.islice(proxy_pool, n_processes))  # Get unique proxies for each process
+
+    apps = fetch_steam_apps(create_session(proxy_list[0]))  # Initial fetch using a proxy
     if not apps:
         log_info("No Steam apps found to process.")
         return
@@ -104,10 +104,11 @@ def main():
     chunk_size = (total_apps + n_processes - 1) // n_processes
     ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_apps)) for i in range(n_processes)]
 
+    # Use Pool to manage processes efficiently with proxies
     with multiprocessing.Pool(processes=n_processes) as pool:
-        pool.starmap(process_apps_range, [(start, end, apps) for start, end in ranges])
+        pool.starmap(process_apps_range, [(start, end, apps, proxy_list[i]) for i, (start, end) in enumerate(ranges)])
 
-    log_info("="*20, "All processes completed.", "="*20)
+    log_info("="*20, "All  Steam processes completed.", "="*20)
 
 if __name__ == "__main__":
     main()

@@ -1,26 +1,30 @@
 import requests
-import time
 import re
 import multiprocessing
 from bs4 import BeautifulSoup
 from utils import log_info, get_mongo_db, save_to_mongo, get_selenium_browser, search_game, regions_nintendo
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
-n_processes = int(os.getenv("n_processes", 8))  # Default to 4 processes if not set
+n_processes = 16  # Adjust based on system performance
 
-API_URL = "https://api.sampleapis.com/switch/games"  # API endpoint
+API_URL = "https://api.sampleapis.com/switch/games"
 JAPAN_URL = "https://www.nintendo.com/jp/software/switch/index.html?sftab=all"
+HEADERS = {"User-Agent": "Mozilla/5.0"}  # Add headers to prevent bot detection
+
 
 def fetch_games():
     try:
-        response = requests.get(API_URL)
+        response = requests.get(API_URL, headers=HEADERS, timeout=15)
         response.raise_for_status()
         return response.json()
-    except Exception as e:
-        print(f"Nintendo: Error fetching games: {e}")
+    except requests.RequestException as e:
+        print(f"Nintendo : Error fetching games: {e}")
         return []
+
+def safe_find(soup, selector, attr=None):
+    element = soup.select_one(selector)
+    if attr:
+        return element[attr] if element else None
+    return element.text.strip() if element else "N/A"
 
 def process_nintendo_game(browser, game):
     try:
@@ -35,14 +39,10 @@ def process_nintendo_game(browser, game):
         browser.get(game_link)
         soup = BeautifulSoup(browser.page_source, "html.parser")
 
-        def safe_find(soup, selector, attr=None):
-            element = soup.select_one(selector)
-            return element[attr] if attr and element else (element.text.strip() if element else None)
-
-        header_image = safe_find(soup, f'img[alt="{title} 1"]', 'src') or "No Game Header Image"
+        header_image = safe_find(soup, f'img[alt="{title} 1"]', 'src') or "No Image"
         rating = safe_find(soup, 'h3:contains("ESRB rating") + div a') or "No Rating"
-        short_description = safe_find(soup, 'meta[name="description"]', 'content') or "No Short Description"
-        platforms = safe_find(soup, 'div.sc-1i9d4nw-14.gxzajP span') or "No platform"
+        short_description = safe_find(soup, 'meta[name="description"]', 'content') or "No Description"
+        platforms = safe_find(soup, 'div.sc-1i9d4nw-14.gxzajP span') or "Unknown"
         screenshots = [img['src'] for img in soup.select('div.-fzAB.SUqIq img')] or []
 
         prices = {}
@@ -81,11 +81,11 @@ def process_nintendo_game(browser, game):
             "publisher": publisher,
             "platforms": platforms,
             "release_date": release_date,
-            "prices": prices
+            "prices": prices,
         }
     except Exception as e:
-        print(f"Nintendo: Error processing game: {e}")
-        return {}
+        print(f"Error processing game {title}: {e}")
+        return None
 
 def process_games_range(start_index, end_index, games):
     log_info(f"Processing games from index {start_index} to {end_index}")
@@ -114,19 +114,10 @@ def main():
         return
 
     chunk_size = (total_games + n_processes - 1) // n_processes
-    ranges = [
-        (i * chunk_size, min((i + 1) * chunk_size, total_games))
-        for i in range(n_processes)
-    ]
+    ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_games)) for i in range(n_processes)]
 
-    processes = []
-    for start, end in ranges:
-        process = multiprocessing.Process(target=process_games_range, args=(start, end, games))
-        processes.append(process)
-        process.start()
-
-    for process in processes:
-        process.join()
+    with multiprocessing.Pool(processes=n_processes) as pool:
+        pool.starmap(process_games_range, [(start, end, games) for start, end in ranges])
 
     log_info("All processes completed.")
 

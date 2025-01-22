@@ -1,12 +1,13 @@
 import requests
+import time
 import re
 import multiprocessing
 from bs4 import BeautifulSoup
 from utils import log_info, get_mongo_db, save_to_mongo, get_selenium_browser, search_game, regions_nintendo
 
-n_processes = 8
+n_processes = 16
 
-API_URL = "https://api.sampleapis.com/switch/games"  # API endpoint
+API_URL = "https://api.sampleapis.com/switch/games" # API endpoint
 JAPAN_URL = "https://www.nintendo.com/jp/software/switch/index.html?sftab=all"
 
 def fetch_games():
@@ -15,73 +16,108 @@ def fetch_games():
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        print(f"Nintendo: Error fetching games: {e}")
+        print(f"Nintendo : Error fetching games: {e}")
+        time.sleep(60)
         return []
 
 def process_nintendo_game(browser, game):
-    try:
-        title = game.get("name", "N/A")
-        categories = game.get("genre", [])
-        publisher = game.get("publishers", ["N/A"])[0]
-        release_date = game.get("releaseDates", {}).get('NorthAmerica', "N/A")
+    # retrieve data by api
+    title = game.get("name", "N/A")
+    categories = game.get("genre", [])
+    publisher = game.get("publishers")[0] if game.get("publishers") else "N/A"
+    release_date = game.get("releaseDates", {})['NorthAmerica']
+    
+    tmp = title.replace("&", "and")
+    tmp = tmp.lower()
+    tmp = re.sub(r'[^a-z0-9 ]', '', tmp)
+    tmp = tmp.replace(" ","-")
 
-        sanitized_title = re.sub(r'[^a-z0-9 ]', '', title.replace("&", "and").lower()).replace(" ", "-")
-        game_link = f"https://www.nintendo.com/us/store/products/{sanitized_title}-switch/"
+    game_link = "https://www.nintendo.com/us/store/products/" + tmp + "-switch/"
+    
+    while True:
+        try:
+            browser.get(game_link)
+            soup = BeautifulSoup(browser.page_source, "html.parser")
 
-        browser.get(game_link)
-        soup = BeautifulSoup(browser.page_source, "html.parser")
+            # cover image
+            tmp = soup.find('img',{'alt': title + " 1"})
+            header_image = tmp['src'] if tmp else "No Game Header Imgae"
 
-        def safe_find(soup, selector, attr=None):
-            element = soup.select_one(selector)
-            return element[attr] if attr and element else (element.text.strip() if element else None)
+            # Rating
+            tmp = soup.find('h3', string='ESRB rating')
+            rating = tmp.find_next('div').find('a').text.strip() if tmp else "No Rating"
 
-        header_image = safe_find(soup, f'img[alt="{title} 1"]', 'src') or "No Game Header Image"
-        rating = safe_find(soup, 'h3:contains("ESRB rating") + div a') or "No Rating"
-        short_description = safe_find(soup, 'meta[name="description"]', 'content') or "No Short Description"
-        platforms = safe_find(soup, 'div.sc-1i9d4nw-14.gxzajP span') or "No platform"
-        screenshots = [img['src'] for img in soup.select('div.-fzAB.SUqIq img')] or []
+            # Short description
+            tmp = soup.find('meta', {'name':'description'})['content']
+            short_description = tmp if tmp else "No Short Description"
 
-        prices = {}
-        tmp = soup.select_one('span.W990N.QS4uJ, div.o2BsP.QS4uJ')
-        prices["us"] = tmp.text.split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATELY"
+            # Platform
+            tmp = soup.find('div', class_='sc-1i9d4nw-14 gxzajP')
+            platforms = tmp.find('span').get_text() if tmp else "No platform"
 
-        # Brazil Price
-        brazil_link = game_link.replace("/us/", "/pt-br/")
-        browser.get(brazil_link)
-        brazil_soup = BeautifulSoup(browser.page_source, 'html.parser')
-        tmp = brazil_soup.select_one('span.W990N.QS4uJ, div.o2BsP.QS4uJ')
-        prices['br'] = tmp.text.replace('\xa0', ' ').split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATELY"
+            # Screenshots 
+            tmp = soup.find('div', {'class' : '-fzAB SUqIq'})
+            screenshots = [img['src'] for img in tmp.find_all('img')] if tmp else []
 
-        for region in regions_nintendo:
-            region_url = game_link.replace("/us/", f"/{region}/")
-            browser.get(region_url)
-            region_soup = BeautifulSoup(browser.page_source, 'html.parser')
-            tmp = region_soup.select_one('span.W990N.QS4uJ, div.o2BsP.QS4uJ')
-            prices[region.split('-')[1]] = tmp.text.split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATELY"
+            # Prices in different regions
+            prices = {}
+            # USA
+            tmp = (soup.find('span', class_='W990N QS4uJ') or soup.find('div', class_='o2BsP QS4uJ'))
+            tmp = tmp.text.strip() if tmp else ""
+            prices["us"] = tmp.split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATELY"
 
-        # Japan
-        browser.get(JAPAN_URL)
-        search_dom = 'input.nc3-c-search__boxText'
-        result_dom = 'div.nc3-c-softCard__listItemPrice'
-        soup = search_game(browser, search_dom, result_dom, title)
-        prices['jp'] = safe_find(soup, 'div.nc3-c-softCard__listItemPrice') or "NOT AVAILABLE SEPARATELY"
+            # Brazil
+            browser.get(game_link.replace("/us/",'/pt-br/'))
+            soup = BeautifulSoup(browser.page_source, 'html.parser')
+            tmp = (soup.find('span', class_='W990N QS4uJ') or soup.find('div', class_='o2BsP QS4uJ'))
+            tmp = tmp.text.strip().replace('\xa0',' ') if tmp else ""
+            prices['br'] = tmp.split(':')[-1].strip() if tmp else "NOT AVAILABLE SEPARATSELY"
 
-        return {
-            "title": title,
-            "categories": categories,
-            "short_description": short_description,
-            "full_description": [],
-            "screenshots": screenshots,
-            "header_image": header_image,
-            "rating": rating,
-            "publisher": publisher,
-            "platforms": platforms,
-            "release_date": release_date,
-            "prices": prices
-        }
-    except Exception as e:
-        print(f"Nintendo: Error processing game: {e}")
-        return {}
+            # EUA
+            index = 0
+            while index < len(regions_nintendo):
+                region_url = regions_nintendo[index]
+                if index < 3:
+                    browser.get(region_url)
+                    soup = search_game(browser, 'input[type="search"]', 'span[class=""]', title)
+                    if soup:
+                        tmp = soup.find_all('ul', class_="results")[-1]
+                        tmp = tmp.find('li', class_="searchresult_row page-list-group-item col-xs-12")
+                        tmp = tmp.find('p', class_='price-small')
+                        price = tmp.find_all('span')[-1].text.strip() if tmp else ""
+                        price.replace("*", ' ')
+                    else: price = ""
+                else:
+                    price = prices["de"]
+                prices[region_url.split('/')[3].split('-')[1]] = price if price else "NOT AVAILABLE SEPARATELY"
+                index += 1
+
+            # Japan
+            browser.get(JAPAN_URL)
+            search_dom = 'input[class="nc3-c-search__boxText nc3-js-megadrop__focusable nc3-js-searchBox__text"]'
+            result_dom = 'div[class="nc3-c-softCard__listItemPrice"]'
+            soup = search_game(browser, search_dom, result_dom, title)
+            price = soup.find('div', class_='nc3-c-softCard__listItemPrice') if soup else ""
+            prices['jp'] = price.text.strip() if price else "NOT AVAILABLE SEPARATELY"
+
+            game_data = {
+                    "title": title,                          
+                    "categories": categories,
+                    "short_description": short_description,
+                    "full_description": [],
+                    "screenshots": screenshots,
+                    "header_image": header_image,
+                    "rating": rating,
+                    "publisher": publisher,
+                    "platforms": platforms,
+                    "release_date": release_date,
+                    "prices": prices
+                }
+            return game_data
+        except Exception as e:
+            print(f"Nintendo : Error processing game: {e}")
+            print("! exception occur : plz check the network or part!")
+            time.sleep(60)
 
 def process_games_range(start_index, end_index, games):
     log_info(f"Processing games from index {start_index} to {end_index}")
@@ -91,12 +127,16 @@ def process_games_range(start_index, end_index, games):
     for index in range(start_index, end_index):
         try:
             game_data = process_nintendo_game(browser, games[index])
-            if game_data:
+            if "error" in game_data:
+                print("plz check the network or part", game_data["error"])
+                time.sleep(60)
+                continue
+            else:
                 save_to_mongo(db, "nintendo_games", game_data)
                 if (index - start_index + 1) % 50 == 0:
-                    log_info(f"Saved {start_index} ~ {index} Nintendo games in this process")
+                    log_info(f"Saved Nintendo {start_index} ~ {index} games in this process")
         except Exception as e:
-            print(f"Error processing game at index {index}: {e}")
+            print(f"Error processing game at index {index}: {str(e)}")
 
     browser.quit()
 
@@ -108,23 +148,26 @@ def main():
     if total_games == 0:
         log_info("No games found to process.")
         return
-
-    chunk_size = (total_games + n_processes - 1) // n_processes
+    
+    # Calculate the ranges for each subprocess
+    chunk_size = (total_games + n_processes - 1) // n_processes  # Ceiling division to cover all games
     ranges = [
-        (i * chunk_size, min((i + 1) * chunk_size, total_games))
+        (i * chunk_size, min((i + 1) * chunk_size - 1, total_games))
         for i in range(n_processes)
     ]
 
+    # Create and start subprocesses
     processes = []
     for start, end in ranges:
         process = multiprocessing.Process(target=process_games_range, args=(start, end, games))
         processes.append(process)
         process.start()
 
+    # Wait for all processes to complete
     for process in processes:
         process.join()
 
-    log_info("All processes completed.")
+    log_info("All Nintendo processes completed.")
 
 if __name__ == "__main__":
     main()

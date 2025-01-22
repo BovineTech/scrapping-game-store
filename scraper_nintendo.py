@@ -119,7 +119,6 @@ def process_nintendo_game(browser, game):
             time.sleep(60)
 
 def process_games_range(start_index, end_index, games):
-    log_info(f"Processing games from index {start_index} to {end_index}")
     db = get_mongo_db()
     browser = get_selenium_browser()
 
@@ -127,8 +126,6 @@ def process_games_range(start_index, end_index, games):
         try:
             game_data = process_nintendo_game(browser, games[index])
             save_to_mongo(db, "nintendo_games", game_data)
-            if (index - start_index + 1) % 50 == 0:
-                log_info(f"Saved Nintendo {start_index} ~ {index} games in this process")
         except Exception as e:
             print(f"Error processing game at index {index}: {str(e)}")
 
@@ -158,7 +155,7 @@ def main():
     for process in processes:
         process.join()
 
-    log_info("="*20, "All Nintendo processes completed.", "="*20)
+    log_info("All Nintendo processes completed.")
 
 if __name__ == "__main__":
     main()

@@ -41,7 +41,7 @@ def get_total_pages(proxy_list):
     while True:
         try:
             session = create_session(proxy_list)
-            response = session.get(PLAYSTATION_URL, timeout=15)
+            response = session.get(PLAYSTATION_URL, timeout=30)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
             ol_tag = soup.select_one('ol.psw-l-space-x-1.psw-l-line-center.psw-list-style-none')
@@ -65,7 +65,7 @@ def fetch_page_links(start_page, end_page, proxy_list):
         try:
             url = f"https://store.playstation.com/en-us/pages/browse/{i + 1}"
             session = create_session(proxy_list)
-            response = session.get(url, timeout=15)
+            response = session.get(url, timeout=30)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
             all_links = [a['href'] for a in soup.find_all('a', href=True)]
@@ -88,7 +88,7 @@ def process_playstation_game(game, proxy_list):
     try:
         url = f"https://store.playstation.com{game}"
         session = create_session(proxy_list)
-        response = session.get(url, timeout=15)
+        response = session.get(url, timeout=30)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, "html.parser")
 
@@ -117,17 +117,18 @@ def process_playstation_game(game, proxy_list):
 def fetch_game_prices(game, proxy_list):
     prices = {"us": "N/A"}
     for region in regions_playstation:
-        try:
-            region_url = f"https://store.playstation.com{game.replace('en-us', region)}"
-            session = create_session(proxy_list)
-            response = session.get(region_url, timeout=10)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.content, "html.parser")
-            price_tag = soup.find(attrs={"data-qa": "mfeCtaMain#offer0#finalPrice"})
-            prices[region.split('-')[1]] = price_tag.text.strip() if price_tag else "Not Available"
-        except requests.RequestException as e:
-            print(f"Error fetching price for {region}: {e}")
-            time.sleep(10)
+        while True:
+            try:
+                region_url = f"https://store.playstation.com{game.replace('en-us', region)}"
+                session = create_session(proxy_list)
+                response = session.get(region_url, timeout=30)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.content, "html.parser")
+                price_tag = soup.find(attrs={"data-qa": "mfeCtaMain#offer0#finalPrice"})
+                prices[region.split('-')[1]] = price_tag.text.strip() if price_tag else "Not Available"
+                break
+            except requests.RequestException as e:
+                time.sleep(5)
     return prices
 
 def process_games_range(start_index, end_index, games, proxy_list):
@@ -160,7 +161,7 @@ def main():
     with multiprocessing.Pool(processes=n_processes) as pool:
         pool.starmap(process_games_range, [(start, end, games, proxy_chunks[i]) for i, (start, end) in enumerate(ranges)])
 
-    log_info("="*20, "All Playstation processes completed.", "="*20)
+    log_info("All Playstation processes completed.")
 
 if __name__ == "__main__":
     main()

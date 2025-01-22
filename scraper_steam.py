@@ -77,8 +77,6 @@ def fetch_price_for_region(app_id, region):
 def process_apps_range(start_index, end_index, apps, proxy):
     session = create_session(proxy)
     db = get_mongo_db()
-    log_info(f"Processing games from index {start_index} to {end_index} using proxy {proxy}")
-    count = 1
 
     for index in range(start_index, end_index):
         app = apps[index]
@@ -86,9 +84,6 @@ def process_apps_range(start_index, end_index, apps, proxy):
             game_data = fetch_game_details(app["appid"], session)
             if "error" not in game_data:
                 save_to_mongo(db, "steam_games", game_data)
-                if count % 200 == 0:
-                    log_info(f"Saved {start_index} ~ {index} Steam games in this process")
-            count += 1
         except Exception as e:
             print(f"Error processing app {app['appid']}: {e}")
 
@@ -109,7 +104,7 @@ def main():
     with multiprocessing.Pool(processes=n_processes) as pool:
         pool.starmap(process_apps_range, [(start, end, apps, proxy_list[i]) for i, (start, end) in enumerate(ranges)])
 
-    log_info("="*20, "All Steam processes completed.", "="*20)
+    log_info("All Steam processes completed.")
 
 if __name__ == "__main__":
     main()

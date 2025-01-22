@@ -8,7 +8,7 @@ import requests
 import itertools
 from requests.adapters import HTTPAdapter
 
-n_processes = 100
+n_processes = 200
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
 
 # Load proxies from file

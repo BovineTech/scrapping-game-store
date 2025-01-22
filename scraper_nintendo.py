@@ -28,22 +28,19 @@ def fetch_games():
         return []
     
 def safe_find(soup, selector, attr=None):
-    if soup is None:
-        print(f"Error: Invalid arguments passed to safe_find: soup=None, selector={selector}")
+    if not soup or not selector:
+        print(f"Error: Invalid arguments passed to safe_find: soup={soup}, selector={selector}")
         return "N/A"
 
     if isinstance(soup, list):
-        if not soup:
-            return "N/A"
-        soup = soup[0]  # Take the first element if it's a list
+        soup = soup[0] if soup else None
 
-    element = soup.select_one(selector) if not isinstance(soup, str) else None
-    if element is None:
+    element = soup.select_one(selector) if soup else None
+    if not element:
         return "N/A"
 
-    if attr:
-        return element.get(attr, "N/A")
-    return element.text.strip() if element else "N/A"
+    return element.get(attr, element.text.strip()) if attr else element.text.strip()
+
 
 def process_nintendo_game(browser, game):
     try:

@@ -7,7 +7,7 @@ import itertools
 from utils import log_info, save_to_mongo, get_mongo_db, regions_playstation
 from requests.adapters import HTTPAdapter
 
-n_processes = 100  # Adjust based on your system's performance
+n_processes = 200  # Adjust based on your system's performance
 PLAYSTATION_URL = "https://store.playstation.com/en-us/pages/browse/1"
 
 # Load proxies from file
@@ -132,8 +132,6 @@ def process_games_range(start_index, end_index, games):
             game_data = process_playstation_game(games[index])
             if game_data:
                 save_to_mongo(db, "playstation_games", game_data)
-                if (index - start_index + 1) % 100 == 0:
-                    log_info(f"Saved {index - start_index + 1} games")
             else:
                 print(f"Missing data for game {index}")
         except Exception as e:

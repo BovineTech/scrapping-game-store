@@ -1,11 +1,9 @@
 import multiprocessing
 import requests
-from requests.adapters import Retry, HTTPAdapter
+from requests.adapters import HTTPAdapter
 from utils import save_to_mongo, get_mongo_db, log_info, regions_steam
-from dotenv import load_dotenv
 import itertools
 
-load_dotenv()
 n_processes = 100  # Define number of processes
 STEAM_API_URL = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
 
@@ -91,7 +89,7 @@ def process_apps_range(start_index, end_index, apps):
             game_data = fetch_game_details(app["appid"], session)
             if "error" not in game_data:
                 save_to_mongo(db, "steam_games", game_data)
-                if index % 100 == 0:
+                if index % 200 == 0:
                     log_info(f"Saved {start_index} ~ {index} games in this process.")
         except Exception as e:
             print(f"Error processing app {app['appid']}: {e}")
@@ -109,7 +107,7 @@ def main():
     with multiprocessing.Pool(processes=n_processes) as pool:
         pool.starmap(process_apps_range, [(start, end, apps) for start, end in ranges])
 
-    log_info("All processes completed.")
+    log_info("="*20, "All processes completed.", "="*20)
 
 if __name__ == "__main__":
     main()

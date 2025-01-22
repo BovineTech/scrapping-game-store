@@ -65,8 +65,6 @@ def fetch_page_links(start_page, end_page):
             all_links = [a['href'] for a in soup.find_all('a', href=True)]
             filtered_links = [link for link in all_links if re.match(r"/en-us/concept/\d+", link)]
             links.extend(filtered_links)
-            if (i + 1) % 50 == 0:
-                log_info(f"Processed {i + 1} pages in process {multiprocessing.current_process().name}")
         except requests.RequestException as e:
             print(f"Error fetching page {i + 1}: {e}")
     return links

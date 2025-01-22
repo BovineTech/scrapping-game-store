@@ -14,9 +14,7 @@ XBOX_URL = "https://www.xbox.com/en-US/games/browse"
 # Load proxies from file
 with open("proxies.txt") as f:
     PROXIES = [line.strip() for line in f if line.strip()]
-
-chunk_size = (len(PROXIES) + n_processes - 1) // n_processes
-proxy_chunks = [PROXIES[i * chunk_size:(i + 1) * chunk_size] for i in range(n_processes)]
+proxy_pool = itertools.cycle(PROXIES)  # Efficient round-robin proxy cycling
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
@@ -130,9 +128,10 @@ def main():
     log_info(f"Found {total_games} games in Xbox.")
     chunk_size = (total_games + n_processes - 1) // n_processes
     ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_games)) for i in range(n_processes)]
+    proxy_list = list(itertools.islice(proxy_pool, n_processes))  # Get unique proxies for each process
 
     with multiprocessing.Pool(processes=n_processes) as pool:
-        pool.starmap(process_games_range, [(start, end, games, proxy_chunks[i]) for i, (start, end) in enumerate(ranges)])
+        pool.starmap(process_games_range, [(start, end, games, proxy_list[i]) for i, (start, end) in enumerate(ranges)])
 
     log_info("All Xbox processes completed.")
 

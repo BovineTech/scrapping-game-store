@@ -13,7 +13,9 @@ PLAYSTATION_URL = "https://store.playstation.com/en-us/pages/browse/1"
 # Load proxies from file
 with open("proxies.txt") as f:
     PROXIES = [line.strip() for line in f if line.strip()]
-proxy_pool = itertools.cycle(PROXIES)  # Efficient round-robin proxy cycling
+
+chunk_size = (len(PROXIES) + n_processes - 1) // n_processes
+proxy_chunks = [PROXIES[i * chunk_size:(i + 1) * chunk_size] for i in range(n_processes)]
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
@@ -27,18 +29,18 @@ HEADERS = {
 }
 
 # Set up a requests session with proxy and retry logic
-def create_session():
-    proxy = next(proxy_pool)
+def create_session(proxy_list):
+    proxy = next(itertools.cycle(proxy_list))
     session = requests.Session()
     session.proxies = {"http": proxy, "https": proxy}
     session.headers.update(HEADERS)
     session.mount('https://', HTTPAdapter(max_retries=3))
     return session
 
-def get_total_pages():
+def get_total_pages(proxy_list):
     while True:
         try:
-            session = create_session()
+            session = create_session(proxy_list)
             response = session.get(PLAYSTATION_URL, timeout=15)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
@@ -57,12 +59,12 @@ def get_total_pages():
             time.sleep(10)
             continue
 
-def fetch_page_links(start_page, end_page):
+def fetch_page_links(start_page, end_page, proxy_list):
     links = []
     for i in range(start_page, end_page):
         try:
             url = f"https://store.playstation.com/en-us/pages/browse/{i + 1}"
-            session = create_session()
+            session = create_session(proxy_list)
             response = session.get(url, timeout=15)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
@@ -78,14 +80,14 @@ def fetch_playstation_games(total_pages):
     ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_pages)) for i in range(n_processes)]
 
     with multiprocessing.Pool(processes=n_processes) as pool:
-        results = pool.starmap(fetch_page_links, ranges)
+        results = pool.starmap(fetch_page_links, [(start, end, proxy_chunks[i]) for i, (start, end) in enumerate(ranges)])
 
     return [link for sublist in results for link in sublist]
 
-def process_playstation_game(game):
+def process_playstation_game(game, proxy_list):
     try:
         url = f"https://store.playstation.com{game}"
-        session = create_session()
+        session = create_session(proxy_list)
         response = session.get(url, timeout=15)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, "html.parser")
@@ -104,7 +106,7 @@ def process_playstation_game(game):
             "platforms": get_text_safe(soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#platform-value'})),
             "release_date": get_text_safe(soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#releaseDate-value'})),
             "categories": [span.text.strip() for span in soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#genre-value'}).find_all('span')] if soup.find(attrs={'data-qa': 'gameInfo#releaseInformation#genre-value'}) else [],
-            "prices": fetch_game_prices(game)
+            "prices": fetch_game_prices(game, proxy_list),
         }
         return game_details
     except requests.RequestException as e:
@@ -112,29 +114,29 @@ def process_playstation_game(game):
     except Exception as e:
         print(f"Error processing game {game}: {e}")
 
-def fetch_game_prices(game):
+def fetch_game_prices(game, proxy_list):
     prices = {"us": "N/A"}
     for region in regions_playstation:
         try:
             region_url = f"https://store.playstation.com{game.replace('en-us', region)}"
-            session = create_session()
+            session = create_session(proxy_list)
             response = session.get(region_url, timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.content, "html.parser")
             price_tag = soup.find(attrs={"data-qa": "mfeCtaMain#offer0#finalPrice"})
             prices[region.split('-')[1]] = price_tag.text.strip() if price_tag else "Not Available"
         except requests.RequestException as e:
-            print(f"Error fetching price for {session.proxies} : {region}: {e}")
+            print(f"Error fetching price for {region}: {e}")
             time.sleep(10)
     return prices
 
-def process_games_range(start_index, end_index, games):
+def process_games_range(start_index, end_index, games, proxy_list):
     log_info(f"Processing games {start_index} to {end_index}")
     db = get_mongo_db()
 
     for index in range(start_index, end_index):
         try:
-            game_data = process_playstation_game(games[index])
+            game_data = process_playstation_game(games[index], proxy_list)
             if game_data:
                 save_to_mongo(db, "playstation_games", game_data)
             else:
@@ -144,7 +146,7 @@ def process_games_range(start_index, end_index, games):
 
 def main():
     log_info("Waiting for fetching Playstation games...")
-    total_pages = get_total_pages()
+    total_pages = get_total_pages(PROXIES)
     games = fetch_playstation_games(total_pages)
 
     total_games = len(games)
@@ -157,9 +159,9 @@ def main():
     ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_games)) for i in range(n_processes)]
 
     with multiprocessing.Pool(processes=n_processes) as pool:
-        pool.starmap(process_games_range, [(start, end, games) for start, end in ranges])
+        pool.starmap(process_games_range, [(start, end, games, proxy_chunks[i]) for i, (start, end) in enumerate(ranges)])
 
-    log_info("="*20, "All  Playstation processes completed.", "="*20)
+    log_info("="*20, "All Playstation processes completed.", "="*20)
 
 if __name__ == "__main__":
     main()

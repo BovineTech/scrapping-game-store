@@ -28,10 +28,14 @@ def fetch_games():
         return []
     
 def safe_find(soup, selector, attr=None):
-    if isinstance(soup, list):  # Handle case where a list is passed
+    if not soup or not selector:
+        print(f"Error: Invalid arguments passed to safe_find: soup={soup}, selector={selector}")
+        return "N/A"
+
+    if isinstance(soup, list):
         print(f"Warning: Expected single tag but got list for selector {selector}")
         soup = soup[0] if soup else None
-    
+
     element = soup.select_one(selector) if soup else None
     if attr:
         return element[attr] if element else None

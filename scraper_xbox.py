@@ -8,7 +8,7 @@ import requests
 import itertools
 from requests.adapters import HTTPAdapter
 
-n_processes = 100
+n_processes = 50
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
 
 # # Load proxies from file
@@ -134,7 +134,7 @@ def main():
     # proxy_list = list(itertools.islice(proxy_pool, n_processes))  # Get unique proxies for each process
 
     with multiprocessing.Pool(processes=n_processes) as pool:
-        pool.starmap(process_games_range, [(start, end, games) for start, end in enumerate(ranges)])
+        pool.starmap(process_games_range, [(start, end, games) for (start, end) in enumerate(ranges)])
         # pool.starmap(process_games_range, [(start, end, games, proxy_list[i]) for i, (start, end) in enumerate(ranges)])
 
     log_info("All Xbox processes completed.")

@@ -5,7 +5,7 @@ import multiprocessing
 from bs4 import BeautifulSoup
 from utils import log_info, get_mongo_db, save_to_mongo, get_selenium_browser, search_game, regions_nintendo
 
-n_processes = 32
+n_processes = 24
 
 API_URL = "https://api.sampleapis.com/switch/games" # API endpoint
 JAPAN_URL = "https://www.nintendo.com/jp/software/switch/index.html?sftab=all"
@@ -115,8 +115,7 @@ def process_nintendo_game(browser, game):
                 }
             return game_data
         except Exception as e:
-            print(f"Nintendo : Error processing game: {e}")
-            print("! exception occur : plz check the network or part!")
+            print(f"Don't worry. Fixing Error Nintendo game: {e}")
             time.sleep(60)
 
 def process_games_range(start_index, end_index, games):
@@ -127,14 +126,9 @@ def process_games_range(start_index, end_index, games):
     for index in range(start_index, end_index):
         try:
             game_data = process_nintendo_game(browser, games[index])
-            if "error" in game_data:
-                print("plz check the network or part", game_data["error"])
-                time.sleep(60)
-                continue
-            else:
-                save_to_mongo(db, "nintendo_games", game_data)
-                if (index - start_index + 1) % 50 == 0:
-                    log_info(f"Saved Nintendo {start_index} ~ {index} games in this process")
+            save_to_mongo(db, "nintendo_games", game_data)
+            if (index - start_index + 1) % 50 == 0:
+                log_info(f"Saved Nintendo {start_index} ~ {index} games in this process")
         except Exception as e:
             print(f"Error processing game at index {index}: {str(e)}")
 

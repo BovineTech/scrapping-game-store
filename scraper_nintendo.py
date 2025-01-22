@@ -156,18 +156,21 @@ def main():
         for i in range(n_processes)
     ]
 
-    # Create and start subprocesses
-    processes = []
-    for start, end in ranges:
-        process = multiprocessing.Process(target=process_games_range, args=(start, end, games))
-        processes.append(process)
-        process.start()
+    # Use Pool to manage processes efficiently with proxies
+    with multiprocessing.Pool(processes=n_processes) as pool:
+        pool.starmap(process_games_range, [(start, end, games) for (start, end) in enumerate(ranges)])
+    # # Create and start subprocesses
+    # processes = []
+    # for start, end in ranges:
+    #     process = multiprocessing.Process(target=process_games_range, args=(start, end, games))
+    #     processes.append(process)
+    #     process.start()
 
-    # Wait for all processes to complete
-    for process in processes:
-        process.join()
+    # # Wait for all processes to complete
+    # for process in processes:
+    #     process.join()
 
-    log_info("All Nintendo processes completed.")
+    log_info("="*20, "All Nintendo processes completed.", "="*20)
 
 if __name__ == "__main__":
     main()

@@ -109,7 +109,7 @@ def main():
     with multiprocessing.Pool(processes=n_processes) as pool:
         pool.starmap(process_apps_range, [(start, end, apps, proxy_list[i]) for i, (start, end) in enumerate(ranges)])
 
-    log_info("="*20, "All  Steam processes completed.", "="*20)
+    log_info("="*20, "All Steam processes completed.", "="*20)
 
 if __name__ == "__main__":
     main()

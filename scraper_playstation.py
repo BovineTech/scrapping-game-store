@@ -16,10 +16,14 @@ with open("proxies.txt") as f:
 proxy_pool = itertools.cycle(PROXIES)  # Efficient round-robin proxy cycling
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:102.0) Gecko/20100101 Firefox/102.0",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
     "Accept-Language": "en-US,en;q=0.9",
-    "Referer": "https://www.playstation.com",
-    "Connection": "keep-alive",
+    "Referer": "https://www.playstation.com/",
+    "Origin": "https://www.playstation.com",
+    "DNT": "1",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "Connection": "keep-alive"
 }
 
 # Set up a requests session with proxy and retry logic
@@ -120,7 +124,8 @@ def fetch_game_prices(game):
             price_tag = soup.find(attrs={"data-qa": "mfeCtaMain#offer0#finalPrice"})
             prices[region.split('-')[1]] = price_tag.text.strip() if price_tag else "Not Available"
         except requests.RequestException as e:
-            print(f"Error fetching price for {region}: {e}")
+            print(f"Error fetching price for {session.proxies} : {region}: {e}")
+            time.sleep(10)
     return prices
 
 def process_games_range(start_index, end_index, games):

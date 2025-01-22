@@ -18,19 +18,6 @@ load_dotenv()
 chromedriver_path = os.getenv("chromedriver_path")
 chrome_path = os.getenv("chrome_path")
 
-my_proxies = [
-    {"http": "http://156.228.109.153:3128", "https": "http://156.228.109.153:3128"},
-    {"http": "http://156.228.178.227:3128", "https": "http://156.228.178.227:3128"},
-    {"http": "http://156.253.172.122:3128", "https": "http://156.253.172.122:3128"},
-    {"http": "http://156.233.94.35:3128", "https": "http://156.233.94.35:3128"},
-    {"http": "http://104.207.50.134:3128", "https": "http://104.207.50.134:3128"},
-    {"http": "http://156.228.103.183:3128", "https": "http://156.228.103.183:3128"},
-    {"http": "http://156.253.170.7:3128", "https": "http://156.253.170.7:3128"},
-    {"http": "http://154.94.15.159:3128", "https": "http://154.94.15.159:3128"},
-    {"http": "http://104.207.33.230:3128", "https": "http://104.207.33.230:3128"},
-    {"http": "http://156.233.95.218:3128", "https": "http://156.233.95.218:3128"},
-]
-
 regions_playstation = [
     # 'en-us',
     'en-eu',
@@ -176,6 +163,7 @@ def click_loadmore_btn(browser, btn_dom):
             continue
         btn = browser.find_element(By.XPATH, btn_dom)
         btn.click()
+        time.sleep(3)
         count += 1
         if(count % 50 == 0):
             print("-"*10, "Load more button", count, " times clikced in Xbox","-"*10)

@@ -1,13 +1,40 @@
 from bs4 import BeautifulSoup
 from utils import (
-    get_mongo_db, save_to_mongo, get_selenium_browser, log_info, 
+    get_mongo_db, save_to_mongo, get_selenium_browser, log_info,
     click_loadmore_btn, regions_xbox
 )
 import multiprocessing
 import requests
+import itertools
+from requests.adapters import HTTPAdapter
 
-n_processes = 16
+n_processes = 100
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
+
+# Load proxies from file
+with open("proxies.txt") as f:
+    PROXIES = [line.strip() for line in f if line.strip()]
+
+chunk_size = (len(PROXIES) + n_processes - 1) // n_processes
+proxy_chunks = [PROXIES[i * chunk_size:(i + 1) * chunk_size] for i in range(n_processes)]
+
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://www.xbox.com/",
+    "DNT": "1",
+    "Cache-Control": "no-cache",
+    "Pragma": "no-cache",
+    "Connection": "keep-alive"
+}
+
+def create_session(proxy_list):
+    proxy = next(itertools.cycle(proxy_list))
+    session = requests.Session()
+    session.proxies = {"http": proxy, "https": proxy}
+    session.headers.update(HEADERS)
+    session.mount('https://', HTTPAdapter(max_retries=3))
+    return session
 
 def fetch_xbox_games():
     try:
@@ -27,10 +54,11 @@ def safe_find(soup, tag, css_class=None, attr=None):
         return element[attr] if element else None
     return element.text.strip() if element else "N/A"
 
-def fetch_price_for_region(details_link, region):
+def fetch_price_for_region(details_link, region, proxy_list):
     try:
         region_url = details_link.replace("en-US", region)
-        response = requests.get(region_url, timeout=10)
+        session = create_session(proxy_list)
+        response = session.get(region_url, timeout=10)
         response.raise_for_status()
         price_soup = BeautifulSoup(response.content, 'html.parser')
         price_element = safe_find(price_soup, 'span', "Price-module__boldText___1i2Li")
@@ -39,7 +67,7 @@ def fetch_price_for_region(details_link, region):
         print(f"Error fetching price for region {region}: {e}")
         return "BUNDLE NOT AVAILABLE"
 
-def process_xbox_game(browser, game):
+def process_xbox_game(browser, game, proxy_list):
     try:
         details_link = game.find('a', href=True)['href']
         browser.get(details_link)
@@ -58,7 +86,7 @@ def process_xbox_game(browser, game):
         release_date = safe_find(details_soup, 'div', "typography-module__xdsBody2___RNdGY") or "No Release Date"
 
         prices = {"us": safe_find(details_soup, 'span', "Price-module__boldText___1i2Li") or "BUNDLE NOT AVAILABLE"}
-        prices.update({region.split('-')[1]: fetch_price_for_region(details_link, region) for region in regions_xbox})
+        prices.update({region.split('-')[1]: fetch_price_for_region(details_link, region, proxy_list) for region in regions_xbox})
 
         return {
             "title": title,
@@ -77,14 +105,14 @@ def process_xbox_game(browser, game):
         print(f"Error processing game details: {e}")
         return None
 
-def process_games_range(start_index, end_index, games):
+def process_games_range(start_index, end_index, games, proxy_list):
     db = get_mongo_db()
     browser = get_selenium_browser()
     log_info(f"Processing games from index {start_index} to {end_index}")
 
     for index in range(start_index, end_index):
         try:
-            game_data = process_xbox_game(browser, games[index])
+            game_data = process_xbox_game(browser, games[index], proxy_list)
             if game_data:
                 save_to_mongo(db, "xbox_games", game_data)
                 if (index - start_index + 1) % 100 == 0:
@@ -107,7 +135,7 @@ def main():
     ranges = [(i * chunk_size, min((i + 1) * chunk_size, total_games)) for i in range(n_processes)]
 
     with multiprocessing.Pool(processes=n_processes) as pool:
-        pool.starmap(process_games_range, [(start, end, games) for start, end in ranges])
+        pool.starmap(process_games_range, [(start, end, games, proxy_chunks[i]) for i, (start, end) in enumerate(ranges)])
 
     log_info("All processes completed.")
 

@@ -4,7 +4,7 @@ import platform
 import subprocess
 from utils import log_info
 
-# Define the scraper order and their intervals
+# Define the scraper order and their respective wait intervals (in seconds)
 SCRAPER_ORDER = [
     ("scraper_nintendo.py", 10),
     ("scraper_playstation.py", 10),
@@ -31,21 +31,20 @@ def run_scraper(scraper, interval):
 
         log_info(f"Process {scraper} started with PID {proc.pid}")
 
-        # Wait for the process to finish
         proc.wait()
 
         log_info(f"========== Finished {scraper} and Updated db. ==========")
 
     except Exception as e:
         print(f"Scheduler.py : Error running {scraper}: {e}")
-        time.sleep(60)  # Wait before retrying
+        time.sleep(60)  # Wait before retrying in case of an error
 
-    # Wait for the interval before moving to the next scraper
     time.sleep(interval)
 
 def main():
-    for scraper, interval in SCRAPER_ORDER:
-        run_scraper(scraper, interval)
+    while True:        
+        for scraper, interval in SCRAPER_ORDER:
+            run_scraper(scraper, interval)
 
 if __name__ == "__main__":
     main()

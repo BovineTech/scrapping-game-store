@@ -3,7 +3,7 @@ import requests
 import multiprocessing
 import re
 import time
-from utils import log_info, log_error, save_to_mongo, get_mongo_db, regions_playstation
+from utils import log_info, save_to_mongo, get_mongo_db, regions_playstation
 
 n_processes = 32  # Adjust based on your system's performance
 PLAYSTATION_URL = "https://store.playstation.com/en-us/pages/browse/1"

@@ -108,15 +108,12 @@ def process_xbox_game(browser, game, proxy_list):
 def process_games_range(start_index, end_index, games, proxy_list):
     db = get_mongo_db()
     browser = get_selenium_browser()
-    log_info(f"Processing games from index {start_index} to {end_index}")
 
     for index in range(start_index, end_index):
         try:
             game_data = process_xbox_game(browser, games[index], proxy_list)
             if game_data:
                 save_to_mongo(db, "xbox_games", game_data)
-                if (index - start_index + 1) % 100 == 0:
-                    log_info(f"Saved {start_index} ~ {index} Xbox games in this process")
         except Exception as e:
             print(f"Error processing Xbox game at index {index}: {e}")
     browser.quit()
@@ -137,7 +134,7 @@ def main():
     with multiprocessing.Pool(processes=n_processes) as pool:
         pool.starmap(process_games_range, [(start, end, games, proxy_chunks[i]) for i, (start, end) in enumerate(ranges)])
 
-    log_info("All processes completed.")
+    log_info("All Xbox processes completed.")
 
 if __name__ == "__main__":
     main()

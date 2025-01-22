@@ -7,7 +7,7 @@ import itertools
 from utils import log_info, save_to_mongo, get_mongo_db, regions_playstation
 from requests.adapters import HTTPAdapter
 
-n_processes = 100  # Adjust based on your system's performance
+n_processes = 200  # Adjust based on your system's performance
 PLAYSTATION_URL = "https://store.playstation.com/en-us/pages/browse/1"
 
 # Load proxies from file
@@ -131,7 +131,6 @@ def fetch_game_prices(game, proxy_list):
     return prices
 
 def process_games_range(start_index, end_index, games, proxy_list):
-    log_info(f"Processing games {start_index} to {end_index}")
     db = get_mongo_db()
 
     for index in range(start_index, end_index):

@@ -5,7 +5,7 @@ import multiprocessing
 from bs4 import BeautifulSoup
 from utils import log_info, get_mongo_db, save_to_mongo, get_selenium_browser, search_game, regions_nintendo
 
-n_processes = 16
+n_processes = 10
 
 API_URL = "https://api.sampleapis.com/switch/games" # API endpoint
 JAPAN_URL = "https://www.nintendo.com/jp/software/switch/index.html?sftab=all"

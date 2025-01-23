@@ -380,7 +380,7 @@ def get_game_count():
     if isinstance(auth_result, tuple):
         return auth_result
     service = request.args.get('service')
-    print(service)
+
     if service == "steam":
         collection = mongo.db.steam_games
     elif service == "xbox":
@@ -392,7 +392,6 @@ def get_game_count():
     else:
         return jsonify({"msg": "Invalid service"}), 400
     
-    print(collection)
     count = collection.count_documents({})
     return jsonify({"count": count}), 200
 

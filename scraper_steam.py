@@ -4,7 +4,7 @@ from requests.adapters import HTTPAdapter
 from utils import save_to_mongo, get_mongo_db, log_info, regions_steam
 import itertools
 
-n_processes = 100  # Define number of processes
+n_processes = 200  # Define number of processes
 STEAM_API_URL = "https://api.steampowered.com/ISteamApps/GetAppList/v2/"
 
 # Load proxies efficiently

@@ -7,7 +7,7 @@ import multiprocessing
 import requests
 from requests.adapters import HTTPAdapter
 
-n_processes = 8
+n_processes = 20
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
 
 HEADERS = {

@@ -392,6 +392,7 @@ def get_game_count():
     else:
         return jsonify({"msg": "Invalid service"}), 400
     
+    print(collection)
     count = collection.count_documents({})
     return jsonify({"count": count}), 200
 

@@ -8,7 +8,7 @@ import requests
 import itertools
 from requests.adapters import HTTPAdapter
 
-n_processes = 100
+n_processes = 32
 XBOX_URL = "https://www.xbox.com/en-US/games/browse"
 
 # # Load proxies from file
@@ -85,7 +85,8 @@ def process_xbox_game(browser, game):
         release_date = safe_find(details_soup, 'div', "typography-module__xdsBody2___RNdGY") or "No Release Date"
 
         prices = {"us": safe_find(details_soup, 'span', "Price-module__boldText___1i2Li") or "BUNDLE NOT AVAILABLE"}
-        prices.update({region.split('-')[1]: fetch_price_for_region(details_link, region, proxy_list) for region in regions_xbox})
+        prices.update({region.split('-')[1]: fetch_price_for_region(details_link, region) for region in regions_xbox})
+        # prices.update({region.split('-')[1]: fetch_price_for_region(details_link, region, proxy_list) for region in regions_xbox})
 
         return {
             "title": title,

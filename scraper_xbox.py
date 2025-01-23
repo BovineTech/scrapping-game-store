@@ -33,6 +33,7 @@ def fetch_xbox_games():
         return soup.find_all('div', class_='ProductCard-module__cardWrapper___6Ls86 shadow')
     except Exception as e:
         print(f"Error fetching Xbox game list: {e}")
+        browser.quit()
         return []
 
 def safe_find(soup, tag, css_class=None, attr=None):
@@ -53,8 +54,9 @@ def fetch_price_for_region(details_link, region):
     except requests.RequestException as e:
         return "BUNDLE NOT AVAILABLE"
 
-def process_xbox_game(browser, game):
+def process_xbox_game(game):
     try:
+        browser = get_selenium_browser()
         details_link = game.find('a', href=True)['href']
         browser.get(details_link)
         details_soup = BeautifulSoup(browser.page_source, 'html.parser')
@@ -73,7 +75,7 @@ def process_xbox_game(browser, game):
 
         prices = {"us": safe_find(details_soup, 'span', "Price-module__boldText___1i2Li") or "BUNDLE NOT AVAILABLE"}
         prices.update({region.split('-')[1]: fetch_price_for_region(details_link, region) for region in regions_xbox})
-
+        browser.quit()
         return {
             "title": title,
             "categories": categories,
@@ -89,20 +91,19 @@ def process_xbox_game(browser, game):
         }
     except Exception as e:
         print(f"Error processing game details: {e}")
+        browser.quit()
         return None
 
 def process_games_range(start_index, end_index, games):
     db = get_mongo_db()
-    browser = get_selenium_browser()
 
     for index in range(start_index, end_index):
         try:
-            game_data = process_xbox_game(browser, games[index])
+            game_data = process_xbox_game(games[index])
             if game_data:
                 save_to_mongo(db, "xbox_games", game_data)
         except Exception as e:
             print(f"Error processing Xbox game at index {index}: {e}")
-    browser.quit()
 
 def main():
     log_info("Waiting for fetching Xbox games...")

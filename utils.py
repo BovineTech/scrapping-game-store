@@ -197,8 +197,12 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
     level=logging.INFO,
 )
-log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)
+# Remove unwanted logs from third-party libraries
+logging.getLogger().setLevel(logging.INFO)
+logging.getLogger('werkzeug').setLevel(logging.CRITICAL)  # Suppress Flask logs
+logging.getLogger('urllib3').setLevel(logging.CRITICAL)   # Suppress HTTP requests warnings
+logging.getLogger('asyncio').setLevel(logging.CRITICAL)   # Suppress asyncio warnings
+logging.getLogger('sqlalchemy').setLevel(logging.CRITICAL)  # Suppress SQLAlchemy warnings
 
 def log_info(message):
     logging.info(message)

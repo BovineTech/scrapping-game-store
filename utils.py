@@ -189,6 +189,8 @@ def search_game(browser, search_dom, result_dom, title):
         return []
 
 # Configure logging
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
 logging.basicConfig(
     filename="scraper.log",
     filemode="a",
@@ -200,6 +202,3 @@ log.setLevel(logging.ERROR)
 
 def log_info(message):
     logging.info(message)
-
-def log_error(message):
-    logging.error(message)

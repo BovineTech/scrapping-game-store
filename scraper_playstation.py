@@ -4,7 +4,7 @@ import multiprocessing
 import re
 import time
 import itertools
-from utils import log_info, save_to_mongo, get_mongo_db, regions_playstation
+from utils import log_info, save_to_mongo, get_mongo_db, update_mongo, regions_playstation
 from requests.adapters import HTTPAdapter
 
 n_processes = 200  # Adjust based on your system's performance
@@ -161,6 +161,8 @@ def main():
     with multiprocessing.Pool(processes=n_processes) as pool:
         pool.starmap(process_games_range, [(start, end, games, proxy_chunks[i]) for i, (start, end) in enumerate(ranges)])
 
+    db = get_mongo_db()
+    update_mongo(db, "playstation_games")
     log_info("All Playstation processes completed.")
 
 if __name__ == "__main__":

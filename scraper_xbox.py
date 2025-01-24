@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 from utils import (
-    get_mongo_db, save_to_mongo, get_selenium_browser, log_info,
+    get_mongo_db, save_to_mongo, update_mongo, get_selenium_browser, log_info,
     click_loadmore_btn, regions_xbox
 )
 import multiprocessing
@@ -126,6 +126,8 @@ def main():
     for process in processes:
         process.join()
 
+    db = get_mongo_db()
+    update_mongo(db, "xbox_games")
     log_info("All Xbox processes completed.")
 
 if __name__ == "__main__":

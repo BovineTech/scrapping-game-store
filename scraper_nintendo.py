@@ -3,7 +3,7 @@ import time
 import re
 import multiprocessing
 from bs4 import BeautifulSoup
-from utils import log_info, get_mongo_db, save_to_mongo, get_selenium_browser, search_game, regions_nintendo
+from utils import log_info, get_mongo_db, save_to_mongo, update_mongo, get_selenium_browser, search_game, regions_nintendo
 
 n_processes = 10
 
@@ -155,6 +155,8 @@ def main():
     for process in processes:
         process.join()
 
+    db = get_mongo_db()
+    update_mongo(db, "nintendo_games")
     log_info("All Nintendo processes completed.")
 
 if __name__ == "__main__":

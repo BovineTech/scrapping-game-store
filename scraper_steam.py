@@ -1,7 +1,7 @@
 import multiprocessing
 import requests
 from requests.adapters import HTTPAdapter
-from utils import save_to_mongo, get_mongo_db, log_info, regions_steam
+from utils import save_to_mongo, get_mongo_db, update_mongo, log_info, regions_steam
 import itertools
 
 n_processes = 100  # Define number of processes
@@ -104,6 +104,8 @@ def main():
     with multiprocessing.Pool(processes=n_processes) as pool:
         pool.starmap(process_apps_range, [(start, end, apps, proxy_list[i]) for i, (start, end) in enumerate(ranges)])
 
+    db = get_mongo_db()
+    update_mongo(db, "steam_games")
     log_info("All Steam processes completed.")
 
 if __name__ == "__main__":

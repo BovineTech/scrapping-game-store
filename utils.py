@@ -119,18 +119,24 @@ def get_mongo_db():
     db = client["test"]
     return db
 
+def update_mongo(db, collection_name):
+    db[collection_name].drop()
+    db[f"{collection_name}_tmp"].rename(collection_name)
+
 def save_to_mongo(db, collection_name, data):
-    title = data.get("title")
-    if title:
-        collection = db[collection_name]
-        existing_data = collection.find_one({"title" : title})
-        if existing_data:
-            collection.update_one(
-                {"_id": existing_data["_id"]},
-                {"$set": data}
-            )
-        else:
-            collection.insert_one(data)
+    collection = db[f"{collection_name}_tmp"]
+    collection.insert_one(data)
+    # title = data.get("title")
+    # if title:
+    #     collection = db[collection_name]
+    #     existing_data = collection.find_one({"title" : title})
+    #     if existing_data:
+    #         collection.update_one(
+    #             {"_id": existing_data["_id"]},
+    #             {"$set": data}
+    #         )
+    #     else:
+    #         collection.insert_one(data)
 
 def get_selenium_browser(retries=3):
     options = Options()
